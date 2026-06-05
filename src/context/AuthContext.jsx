@@ -30,8 +30,14 @@ export const AuthProvider = ({ children }) => {
       name: name,
       farmSize: "",
       location: "",
+      state: "",
+      district: "",
       soilType: "",
+      landOwnership: "",
+      farmerCategory: "",
+      irrigationType: "",
       primaryCrops: [],
+      availableDocuments: [],
       createdAt: new Date().toISOString()
     };
     
@@ -61,8 +67,14 @@ export const AuthProvider = ({ children }) => {
         name: user.displayName || "Farmer",
         farmSize: "",
         location: "",
+        state: "",
+        district: "",
         soilType: "",
+        landOwnership: "",
+        farmerCategory: "",
+        irrigationType: "",
         primaryCrops: [],
+        availableDocuments: [],
         createdAt: new Date().toISOString()
       };
       await setDoc(docRef, profileData);
@@ -100,8 +112,14 @@ export const AuthProvider = ({ children }) => {
               name: user.displayName || "Farmer",
               farmSize: "",
               location: "",
+              state: "",
+              district: "",
               soilType: "",
+              landOwnership: "",
+              farmerCategory: "",
+              irrigationType: "",
               primaryCrops: [],
+              availableDocuments: [],
               createdAt: new Date().toISOString()
             };
             await setDoc(docRef, profileData);

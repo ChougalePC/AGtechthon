@@ -1,8 +1,18 @@
 import React, { useState } from 'react';
-import { User, MapPin, Mail, Award, Sprout, TrendingUp, ShieldCheck, Edit3, X, Save, Leaf, Droplets, CheckCircle2 } from 'lucide-react';
+import { User, MapPin, Mail, Award, Sprout, TrendingUp, ShieldCheck, Edit3, X, Save, Leaf, Droplets, CheckCircle2, FileText } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+
+const ALL_DOCUMENTS = [
+  'Aadhar Card',
+  '7/12 Extract (Land)',
+  '8A Extract',
+  'Bank Passbook',
+  'Caste Certificate',
+  'Income Certificate',
+  'Crop Sowing Certificate'
+];
 
 const FarmerProfile = () => {
   const { userProfile, setUserProfile } = useAuth();
@@ -10,23 +20,40 @@ const FarmerProfile = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     name: userProfile?.name || '',
-    location: userProfile?.location || '',
+    state: userProfile?.state || '',
+    district: userProfile?.district || '',
+    location: userProfile?.location || '', // kept for backwards compatibility
     farmSize: userProfile?.farmSize || '',
     soilType: userProfile?.soilType || '',
-    primaryCrops: userProfile?.primaryCrops ? userProfile.primaryCrops.join(', ') : ''
+    landOwnership: userProfile?.landOwnership || '',
+    farmerCategory: userProfile?.farmerCategory || '',
+    irrigationType: userProfile?.irrigationType || '',
+    primaryCrops: userProfile?.primaryCrops ? userProfile.primaryCrops.join(', ') : '',
+    availableDocuments: userProfile?.availableDocuments || []
   });
 
   // Calculate Profile Completion
   const calculateCompletion = () => {
     if (!userProfile) return 0;
-    const fields = ['name', 'location', 'farmSize', 'soilType', 'primaryCrops'];
+    const fields = ['name', 'state', 'district', 'farmSize', 'soilType', 'landOwnership', 'farmerCategory', 'irrigationType', 'primaryCrops'];
     const filled = fields.filter(field => {
       const val = userProfile[field];
-      return val && (Array.isArray(val) ? val.length > 0 : val.trim() !== '');
+      return val && (Array.isArray(val) ? val.length > 0 : String(val).trim() !== '');
     }).length;
     return Math.round((filled / fields.length) * 100);
   };
   const completionPercent = calculateCompletion();
+
+  const handleDocumentToggle = (docName) => {
+    setFormData(prev => {
+      const currentDocs = prev.availableDocuments;
+      if (currentDocs.includes(docName)) {
+        return { ...prev, availableDocuments: currentDocs.filter(d => d !== docName) };
+      } else {
+        return { ...prev, availableDocuments: [...currentDocs, docName] };
+      }
+    });
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -35,10 +62,16 @@ const FarmerProfile = () => {
     try {
       const updatedData = {
         name: formData.name,
-        location: formData.location,
+        state: formData.state,
+        district: formData.district,
+        location: `${formData.district}, ${formData.state}`, // sync location string
         farmSize: formData.farmSize,
         soilType: formData.soilType,
-        primaryCrops: formData.primaryCrops.split(',').map(c => c.trim()).filter(c => c)
+        landOwnership: formData.landOwnership,
+        farmerCategory: formData.farmerCategory,
+        irrigationType: formData.irrigationType,
+        primaryCrops: formData.primaryCrops.split(',').map(c => c.trim()).filter(c => c),
+        availableDocuments: formData.availableDocuments
       };
 
       const userRef = doc(db, 'users', userProfile.uid);
@@ -115,11 +148,19 @@ const FarmerProfile = () => {
             <div className="w-full flex flex-col gap-3 mt-2 text-left">
               <div className="flex items-center gap-3 p-3 rounded-lg bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.1)] group-hover:border-[rgba(180,210,140,0.3)] transition-colors">
                 <MapPin size={16} className="text-[rgba(180,210,140,0.7)]" />
-                <span className="text-sm font-light text-heading">{userProfile.location || <span className="text-label italic">Location not set</span>}</span>
+                <span className="text-sm font-light text-heading">
+                  {userProfile.district && userProfile.state ? `${userProfile.district}, ${userProfile.state}` : <span className="text-label italic">Location not set</span>}
+                </span>
               </div>
               <div className="flex items-center gap-3 p-3 rounded-lg bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.1)] group-hover:border-[rgba(180,210,140,0.3)] transition-colors">
                 <Mail size={16} className="text-[rgba(180,210,140,0.7)]" />
                 <span className="text-sm font-light text-heading truncate">{userProfile.email}</span>
+              </div>
+              <div className="flex items-center gap-3 p-3 rounded-lg bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.1)] group-hover:border-[rgba(180,210,140,0.3)] transition-colors">
+                <User size={16} className="text-[rgba(180,210,140,0.7)]" />
+                <span className="text-sm font-light text-heading">
+                  {userProfile.farmerCategory ? `${userProfile.farmerCategory} Category` : <span className="text-label italic">Category not set</span>}
+                </span>
               </div>
             </div>
           </div>
@@ -151,28 +192,32 @@ const FarmerProfile = () => {
         {/* Right Col: Farm Details & History */}
         <div className="lg:col-span-2 flex flex-col gap-6">
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="glass-card p-6 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group hover:-translate-y-1 transition-transform duration-300">
-              <Sprout size={24} className="text-accent mb-4 opacity-70 group-hover:opacity-100 transition-opacity" />
-              <p className="text-[10px] uppercase tracking-wider text-label mb-1">Total Farm Size</p>
-              <h3 className="font-serif text-3xl text-heading">
-                {userProfile.farmSize ? (
-                  <>{userProfile.farmSize} <span className="text-base font-sans font-light text-body">Acres</span></>
-                ) : (
-                  <span className="text-lg text-label italic">Not Specified</span>
-                )}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="glass-card p-4 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group">
+              <p className="text-[10px] uppercase tracking-wider text-label mb-1">Farm Size</p>
+              <h3 className="font-serif text-2xl text-heading">
+                {userProfile.farmSize ? `${userProfile.farmSize} Ac` : '-'}
               </h3>
             </div>
             
-            <div className="glass-card p-6 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group hover:-translate-y-1 transition-transform duration-300">
-              <Leaf size={24} className="text-accent mb-4 opacity-70 group-hover:opacity-100 transition-opacity" />
+            <div className="glass-card p-4 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group">
               <p className="text-[10px] uppercase tracking-wider text-label mb-1">Soil Type</p>
-              <h3 className="font-serif text-3xl text-heading">
-                {userProfile.soilType ? (
-                  <span className="capitalize">{userProfile.soilType}</span>
-                ) : (
-                  <span className="text-lg text-label italic">Not Specified</span>
-                )}
+              <h3 className="font-serif text-xl text-heading truncate">
+                {userProfile.soilType || '-'}
+              </h3>
+            </div>
+
+            <div className="glass-card p-4 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group">
+              <p className="text-[10px] uppercase tracking-wider text-label mb-1">Ownership</p>
+              <h3 className="font-serif text-xl text-heading truncate">
+                {userProfile.landOwnership || '-'}
+              </h3>
+            </div>
+
+            <div className="glass-card p-4 border border-[rgba(180,210,140,0.2)] bg-gradient-to-br from-[rgba(20,35,20,0.4)] to-[rgba(10,15,10,0.6)] group">
+              <p className="text-[10px] uppercase tracking-wider text-label mb-1">Irrigation</p>
+              <h3 className="font-serif text-xl text-heading truncate">
+                {userProfile.irrigationType || '-'}
               </h3>
             </div>
           </div>
@@ -199,18 +244,23 @@ const FarmerProfile = () => {
             </div>
             
             <h3 className="font-serif text-xl text-heading mt-10 mb-6 flex items-center justify-between">
-              Recent Activity
+              Available Documents
             </h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-4 p-4 rounded-lg bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.05)]">
-                <div className="w-10 h-10 rounded-full bg-[rgba(180,210,140,0.1)] flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 size={18} className="text-accent" />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {userProfile?.availableDocuments?.length > 0 ? (
+                userProfile.availableDocuments.map((docName, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-3 rounded-xl bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.15)]">
+                    <FileText size={16} className="text-accent" />
+                    <span className="text-sm font-medium text-heading">{docName}</span>
+                    <CheckCircle2 size={14} className="ml-auto text-green-400" />
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full py-6 text-center border-2 border-dashed border-[rgba(180,210,140,0.2)] rounded-xl">
+                  <p className="text-sm text-label">No documents added yet. This will affect scheme eligibility.</p>
+                  <button onClick={() => setIsEditing(true)} className="mt-3 text-xs tracking-[1px] uppercase text-accent hover:underline decoration-accent/40 underline-offset-4">Add Documents</button>
                 </div>
-                <div>
-                  <h4 className="text-sm font-medium text-heading">Account Created</h4>
-                  <p className="text-xs font-light text-label mt-1">Welcome to the KrishiMitra intelligence network.</p>
-                </div>
-              </div>
+              )}
             </div>
             
           </div>
@@ -220,11 +270,11 @@ const FarmerProfile = () => {
 
       {/* Edit Profile Modal */}
       {isEditing && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-          <div className="bg-[rgba(12,18,12,0.95)] border border-[rgba(180,210,140,0.3)] rounded-2xl w-full max-w-lg shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_0_1px_rgba(200,240,120,0.05)_inset] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-in fade-in duration-300 overflow-y-auto">
+          <div className="bg-[rgba(12,18,12,0.95)] border border-[rgba(180,210,140,0.3)] rounded-2xl w-full max-w-2xl my-8 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_0_1px_rgba(200,240,120,0.05)_inset] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
             
-            <div className="p-5 border-b border-[rgba(180,210,140,0.1)] flex items-center justify-between bg-gradient-to-r from-[rgba(20,35,20,0.4)] to-transparent">
-              <h2 className="font-serif text-2xl text-heading">Edit Profile</h2>
+            <div className="p-5 border-b border-[rgba(180,210,140,0.1)] flex items-center justify-between bg-gradient-to-r from-[rgba(20,35,20,0.4)] to-transparent sticky top-0 z-10">
+              <h2 className="font-serif text-2xl text-heading">Edit Comprehensive Profile</h2>
               <button 
                 onClick={() => setIsEditing(false)}
                 className="w-8 h-8 rounded-full bg-[rgba(255,255,255,0.05)] hover:bg-[rgba(255,255,255,0.1)] flex items-center justify-center transition-colors"
@@ -233,67 +283,155 @@ const FarmerProfile = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSave} className="p-6 flex flex-col gap-5">
+            <form onSubmit={handleSave} className="p-6 flex flex-col gap-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
               
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase tracking-wider text-label ml-1">Full Name</label>
-                <input 
-                  type="text" 
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] focus:shadow-[0_0_15px_rgba(230,245,120,0.15)] transition-all"
-                  placeholder="e.g. Ramesh Patil"
-                  required
-                />
-              </div>
-              
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase tracking-wider text-label ml-1">Location (District, State)</label>
-                <input 
-                  type="text" 
-                  value={formData.location}
-                  onChange={(e) => setFormData({...formData, location: e.target.value})}
-                  className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
-                  placeholder="e.g. Baramati, Pune"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-accent uppercase tracking-wider border-b border-[rgba(180,210,140,0.1)] pb-2">Personal Information</h3>
+                
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-label ml-1">Farm Size (Acres)</label>
-                  <input 
-                    type="number" 
-                    step="0.1"
-                    value={formData.farmSize}
-                    onChange={(e) => setFormData({...formData, farmSize: e.target.value})}
-                    className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
-                    placeholder="e.g. 4.5"
-                  />
-                </div>
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-[10px] uppercase tracking-wider text-label ml-1">Soil Type</label>
+                  <label className="text-[10px] uppercase tracking-wider text-label ml-1">Full Name</label>
                   <input 
                     type="text" 
-                    value={formData.soilType}
-                    onChange={(e) => setFormData({...formData, soilType: e.target.value})}
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
-                    placeholder="e.g. Black Cotton Soil"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">State</label>
+                    <select 
+                      value={formData.state}
+                      onChange={(e) => setFormData({...formData, state: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all appearance-none"
+                    >
+                      <option value="">Select State</option>
+                      <option value="Maharashtra">Maharashtra</option>
+                      <option value="Punjab">Punjab</option>
+                      <option value="Gujarat">Gujarat</option>
+                      <option value="Karnataka">Karnataka</option>
+                      <option value="Madhya Pradesh">Madhya Pradesh</option>
+                      <option value="Uttar Pradesh">Uttar Pradesh</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">District</label>
+                    <input 
+                      type="text" 
+                      value={formData.district}
+                      onChange={(e) => setFormData({...formData, district: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
+                      placeholder="e.g. Pune"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase tracking-wider text-label ml-1">Farmer Category</label>
+                  <select 
+                    value={formData.farmerCategory}
+                    onChange={(e) => setFormData({...formData, farmerCategory: e.target.value})}
+                    className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all appearance-none"
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Marginal (up to 1 hectare)">Marginal (up to 1 hectare)</option>
+                    <option value="Small (1 to 2 hectares)">Small (1 to 2 hectares)</option>
+                    <option value="Semi-Medium (2 to 4 hectares)">Semi-Medium (2 to 4 hectares)</option>
+                    <option value="Medium (4 to 10 hectares)">Medium (4 to 10 hectares)</option>
+                    <option value="Large (10+ hectares)">Large (10+ hectares)</option>
+                    <option value="SC/ST">SC/ST</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-accent uppercase tracking-wider border-b border-[rgba(180,210,140,0.1)] pb-2 mt-4">Farm Details</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">Farm Size (Acres)</label>
+                    <input 
+                      type="number" 
+                      step="0.1"
+                      value={formData.farmSize}
+                      onChange={(e) => setFormData({...formData, farmSize: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">Soil Type</label>
+                    <input 
+                      type="text" 
+                      value={formData.soilType}
+                      onChange={(e) => setFormData({...formData, soilType: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">Land Ownership</label>
+                    <select 
+                      value={formData.landOwnership}
+                      onChange={(e) => setFormData({...formData, landOwnership: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all appearance-none"
+                    >
+                      <option value="">Select Ownership</option>
+                      <option value="Registered Owner">Registered Owner</option>
+                      <option value="Tenant Farmer">Tenant Farmer</option>
+                      <option value="Sharecropper">Sharecropper</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] uppercase tracking-wider text-label ml-1">Irrigation Type</label>
+                    <select 
+                      value={formData.irrigationType}
+                      onChange={(e) => setFormData({...formData, irrigationType: e.target.value})}
+                      className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all appearance-none"
+                    >
+                      <option value="">Select Irrigation</option>
+                      <option value="Rainfed">Rainfed</option>
+                      <option value="Drip Irrigation">Drip Irrigation</option>
+                      <option value="Sprinkler">Sprinkler</option>
+                      <option value="Canal/Well">Canal/Well</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[10px] uppercase tracking-wider text-label ml-1">Primary Crops (Comma separated)</label>
+                  <input 
+                    type="text" 
+                    value={formData.primaryCrops}
+                    onChange={(e) => setFormData({...formData, primaryCrops: e.target.value})}
+                    className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[10px] uppercase tracking-wider text-label ml-1">Primary Crops (Comma separated)</label>
-                <input 
-                  type="text" 
-                  value={formData.primaryCrops}
-                  onChange={(e) => setFormData({...formData, primaryCrops: e.target.value})}
-                  className="w-full bg-[rgba(8,12,8,0.6)] border border-[rgba(140,180,120,0.2)] rounded-lg px-4 py-3 text-sm text-heading placeholder-[rgba(215,230,190,0.3)] focus:outline-none focus:border-[rgba(230,245,120,0.5)] transition-all"
-                  placeholder="e.g. Soybean, Wheat, Cotton"
-                />
+              <div className="space-y-4">
+                <h3 className="text-sm font-medium text-accent uppercase tracking-wider border-b border-[rgba(180,210,140,0.1)] pb-2 mt-4">Document Checklist</h3>
+                <p className="text-xs text-body mb-2">Check the documents you currently possess. This helps determine scheme eligibility.</p>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {ALL_DOCUMENTS.map((docName) => (
+                    <label key={docName} className="flex items-center gap-3 p-3 rounded-lg bg-[rgba(10,15,10,0.4)] border border-[rgba(140,180,120,0.15)] cursor-pointer hover:border-[rgba(180,210,140,0.4)] transition-colors">
+                      <input 
+                        type="checkbox" 
+                        checked={formData.availableDocuments.includes(docName)}
+                        onChange={() => handleDocumentToggle(docName)}
+                        className="w-4 h-4 rounded border-[rgba(180,210,140,0.3)] text-accent focus:ring-accent/20 focus:ring-offset-0 bg-transparent"
+                      />
+                      <span className="text-sm font-light text-heading select-none">{docName}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 mt-2 border-t border-[rgba(180,210,140,0.05)]">
+              <div className="pt-4 flex items-center justify-end gap-3 mt-4 border-t border-[rgba(180,210,140,0.1)] sticky bottom-0 bg-[rgba(12,18,12,0.95)]">
                 <button 
                   type="button"
                   onClick={() => setIsEditing(false)}
@@ -304,7 +442,7 @@ const FarmerProfile = () => {
                 <button 
                   type="submit"
                   disabled={isSaving}
-                  className="px-6 py-2.5 text-xs font-medium tracking-wider uppercase bg-accent text-black rounded-full hover:bg-[rgba(210,230,100,1)] transition-colors flex items-center gap-2 disabled:opacity-50"
+                  className="px-6 py-2.5 text-xs font-medium tracking-wider uppercase bg-accent text-black rounded-full hover:bg-[rgba(210,230,100,1)] transition-colors flex items-center gap-2 disabled:opacity-50 shadow-[0_0_15px_rgba(230,245,120,0.3)]"
                 >
                   {isSaving ? (
                     <div className="w-4 h-4 rounded-full border-2 border-black/20 border-t-black animate-spin"></div>
