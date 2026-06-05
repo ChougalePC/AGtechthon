@@ -389,7 +389,7 @@
   }
 
   // ── Login handler ─────────────────────────────────────────────
-  function handleLogin() {
+  window.handleLogin = function() {
     const btn = document.getElementById('btnLogin');
     const err = document.getElementById('loginError');
     const email = document.getElementById('loginEmail').value.trim();
@@ -400,15 +400,18 @@
     if (pass.length < 6) { showMsg(err, 'Password must be at least 6 characters.', 'error'); return; }
 
     btn.classList.add('loading');
-    setTimeout(() => {
+    window.doFirebaseLogin(email, pass).then(() => {
       btn.classList.remove('loading');
       console.log('[Oasis] Login →', email);
       window.location.href = '/app/';
-    }, 1500);
+    }).catch(error => {
+      btn.classList.remove('loading');
+      showMsg(err, error.message, 'error');
+    });
   }
 
   // ── Register handler ──────────────────────────────────────────
-  function handleRegister() {
+  window.handleRegister = function() {
     const btn  = document.getElementById('btnRegister');
     const err  = document.getElementById('regError');
     const succ = document.getElementById('regSuccess');
@@ -419,24 +422,71 @@
 
     if (!name || !email || !pass || !confirm) { showMsg(err, 'Please fill in all fields.', 'error'); return; }
     if (!email.includes('@')) { showMsg(err, 'Enter a valid email address.', 'error'); return; }
-    if (pass.length < 8) { showMsg(err, 'Password must be at least 8 characters.', 'error'); return; }
+    if (pass.length < 6) { showMsg(err, 'Password must be at least 6 characters.', 'error'); return; }
     if (pass !== confirm) { showMsg(err, 'Passwords do not match.', 'error'); return; }
 
     btn.classList.add('loading');
-    setTimeout(() => {
+    window.doFirebaseRegister(email, pass, name).then(() => {
       btn.classList.remove('loading');
       showMsg(succ, `Welcome, ${name}! Your sanctuary is ready.`, 'success');
       console.log('[Oasis] Register →', email);
       window.location.href = '/app/';
-    }, 1500);
+    }).catch(error => {
+      btn.classList.remove('loading');
+      showMsg(err, error.message, 'error');
+    });
   }
 
   // Enter key support
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter') return;
-    if (document.getElementById('panelLogin').classList.contains('active')) handleLogin();
-    else handleRegister();
+    if (document.getElementById('panelLogin').classList.contains('active')) window.handleLogin();
+    else window.handleRegister();
   });
+</script>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+  import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+  import { getFirestore, doc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAb1B6LqqTMMZnz-AY8f0ddSemWh8zZ2SE",
+    authDomain: "auth-8c5ed.firebaseapp.com",
+    projectId: "auth-8c5ed",
+    storageBucket: "auth-8c5ed.firebasestorage.app",
+    messagingSenderId: "418145065852",
+    appId: "1:418145065852:web:d73d946f314b28275be2f9",
+    measurementId: "G-J4V0CPSZDQ"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+
+  window.doFirebaseLogin = async (email, password) => {
+    await signInWithEmailAndPassword(auth, email, password);
+  };
+
+  window.doFirebaseRegister = async (email, password, name) => {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Create initial user profile in Firestore
+    const profileData = {
+      uid: user.uid,
+      email: user.email,
+      name: name,
+      farmSize: "",
+      location: "",
+      soilType: "",
+      primaryCrops: [],
+      createdAt: new Date().toISOString()
+    };
+    
+    await setDoc(doc(db, "users", user.uid), profileData);
+    return user;
+  };
 </script>
 
 <script type="module">

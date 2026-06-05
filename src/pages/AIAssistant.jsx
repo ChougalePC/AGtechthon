@@ -118,27 +118,42 @@ const AIAssistant = () => {
     setLoading(true);
     
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const apiKey = import.meta.env.VITE_GROQ_API_KEY;
       if (!apiKey) throw new Error("API Key missing");
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
       
       const tempStr = weatherData?.temp ? `${weatherData.temp}°C` : "unknown";
       const condStr = weatherData?.condition ? weatherData.condition : "unknown";
       const systemContext = `You are KrishiMitra, an expert AI farming assistant. Be highly concise, actionable, and professional. The current weather is ${tempStr} and ${condStr}. Do not use bold formatting or markdown excessively, keep it readable as plain text.`;
       
-      const textPrompt = `${systemContext}\nUser asks: ${promptToSend}`;
-      
-      let result;
+      let payload;
       if (currentImage) {
-        const imagePart = await fileToGenerativePart(currentImage);
-        result = await model.generateContent([textPrompt, imagePart]);
+        throw new Error("Groq has recently decommissioned all Vision models from their free tier. Image analysis is currently unavailable on Groq. Please use text prompts only, or switch back to a Gemini API key for image support.");
       } else {
-        result = await model.generateContent(textPrompt);
+        payload = {
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemContext },
+            { role: "user", content: promptToSend }
+          ]
+        };
       }
 
-      const response = await result.response;
-      const text = response.text();
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error?.message || "Failed to connect to Groq");
+      }
+      
+      const data = await res.json();
+      const text = data.choices[0].message.content;
 
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
@@ -146,11 +161,11 @@ const AIAssistant = () => {
         text: text 
       }]);
     } catch (error) {
-      console.error(error);
+      console.error("AI API Error:", error);
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         type: 'ai', 
-        text: "I'm having trouble connecting to my intelligence network. Please verify the API key and internet connection." 
+        text: `KrishiMitra Intelligence Error: ${error.message}` 
       }]);
     } finally {
       setLoading(false);
