@@ -92,6 +92,20 @@ export const AuthProvider = ({ children }) => {
           const docSnap = await getDoc(docRef);
           if (docSnap.exists()) {
             setUserProfile(docSnap.data());
+          } else {
+            // Auto-repair: create a missing profile document
+            const profileData = {
+              uid: user.uid,
+              email: user.email,
+              name: user.displayName || "Farmer",
+              farmSize: "",
+              location: "",
+              soilType: "",
+              primaryCrops: [],
+              createdAt: new Date().toISOString()
+            };
+            await setDoc(docRef, profileData);
+            setUserProfile(profileData);
           }
         } else {
           setUserProfile(null);

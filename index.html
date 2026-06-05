@@ -2653,5 +2653,36 @@
 
 		renderer.setAnimationLoop(animate);
 	</script>
+
+	<script type="module">
+		import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+		import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+
+		const firebaseConfig = {
+			apiKey: "AIzaSyAb1B6LqqTMMZnz-AY8f0ddSemWh8zZ2SE",
+			authDomain: "auth-8c5ed.firebaseapp.com",
+			projectId: "auth-8c5ed",
+			storageBucket: "auth-8c5ed.firebasestorage.app",
+			messagingSenderId: "418145065852",
+			appId: "1:418145065852:web:d73d946f314b28275be2f9",
+			measurementId: "G-J4V0CPSZDQ"
+		};
+
+		const app = initializeApp(firebaseConfig);
+		const auth = getAuth(app);
+
+		onAuthStateChanged(auth, (user) => {
+			if (user) {
+				document.querySelectorAll('a[href="login.html"]').forEach(link => {
+					if (link.textContent.includes('→')) {
+						link.textContent = 'Dashboard →';
+					} else {
+						link.textContent = 'Dashboard';
+					}
+					link.href = '/app/';
+				});
+			}
+		});
+	</script>
 </body>
 </html>
