@@ -144,28 +144,28 @@ const Dashboard = () => {
 
           {/* QUICK ACTIONS */}
           <div className="grid grid-cols-2 gap-4">
-            <Link to="/app/disease" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
+            <Link to="/disease" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
               <Sprout className="text-accent w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <div>
                 <span className="text-sm font-medium text-heading block mb-1">Disease Scan</span>
                 <span className="text-[10px] text-accent/70 tracking-wide uppercase block">AI Vision Engine</span>
               </div>
             </Link>
-            <Link to="/app/market" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
+            <Link to="/market" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
               <TrendingUp className="text-accent w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <div>
                 <span className="text-sm font-medium text-heading block mb-1">Market Prices</span>
                 <span className="text-[10px] text-accent/70 tracking-wide uppercase block">Live Intel</span>
               </div>
             </Link>
-            <Link to="/app/irrigation" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
+            <Link to="/irrigation" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
               <Droplets className="text-[#8cb478] w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <div>
                 <span className="text-sm font-medium text-heading block mb-1">Irrigation</span>
                 <span className="text-[10px] text-label tracking-wide uppercase block">Smart Scheduling</span>
               </div>
             </Link>
-            <Link to="/app/crop" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
+            <Link to="/crop" className="glass-card p-5 hover:bg-[rgba(20,35,20,0.45)] transition-colors group border-[rgba(140,180,120,0.15)] flex flex-col justify-between min-h-[120px]">
               <Sparkles className="text-accent w-6 h-6 mb-2 group-hover:scale-110 transition-transform" />
               <div>
                 <span className="text-sm font-medium text-heading block mb-1">Crop Recs</span>
@@ -197,7 +197,7 @@ const Dashboard = () => {
             </h3>
             
             <div className="flex items-center gap-4 text-[rgba(215,230,190,0.7)] border-l-2 border-accent pl-6 relative z-10">
-               <Link to="/app/ai" className="text-sm uppercase tracking-widest font-medium hover:text-white transition-colors flex items-center gap-2">
+               <Link to="/ai" className="text-sm uppercase tracking-widest font-medium hover:text-white transition-colors flex items-center gap-2">
                  Ask KrishiMitra a question <ArrowRight className="w-4 h-4" />
                </Link>
             </div>
@@ -237,7 +237,7 @@ const Dashboard = () => {
               )}
             </div>
             
-            <Link to="/app/analytics" className="block mt-10 pt-6 border-t border-[rgba(140,180,120,0.1)] text-xs text-center text-accent uppercase tracking-widest hover:text-white transition-colors relative z-10">
+            <Link to="/analytics" className="block mt-10 pt-6 border-t border-[rgba(140,180,120,0.1)] text-xs text-center text-accent uppercase tracking-widest hover:text-white transition-colors relative z-10">
               View Detailed Analytics <ArrowRight className="inline-block w-4 h-4 ml-2 -mt-0.5" />
             </Link>
           </div>
