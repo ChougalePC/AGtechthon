@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Mic, Sparkles, Sprout, CloudRain, Droplets, TrendingUp, AlertTriangle, FileText, ChevronRight } from 'lucide-react';
+import { Send, Mic, Sparkles, Sprout, CloudRain, Droplets, TrendingUp, AlertTriangle, FileText, ImagePlus, X, Volume2, Square } from 'lucide-react';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { useOutletContext } from 'react-router-dom';
 
@@ -12,6 +12,14 @@ const AIAssistant = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef(null);
+  
+  // Vision and Voice States
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
+  
+  const [isRecording, setIsRecording] = useState(false);
+  const [speakingId, setSpeakingId] = useState(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -21,18 +29,96 @@ const AIAssistant = () => {
     scrollToBottom();
   }, [messages]);
 
+  // Clean up speech synthesis on unmount
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+  }, []);
+
+  const handleImageSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setSelectedImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearImage = () => {
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const fileToGenerativePart = async (file) => {
+    const base64EncodedDataPromise = new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result.split(',')[1]);
+      reader.readAsDataURL(file);
+    });
+    return {
+      inlineData: { data: await base64EncodedDataPromise, mimeType: file.type },
+    };
+  };
+
+  const startRecording = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    
+    recognition.onstart = () => setIsRecording(true);
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map(result => result[0])
+        .map(result => result.transcript)
+        .join('');
+      setInput(transcript);
+    };
+    recognition.onerror = (event) => {
+      console.error(event.error);
+      setIsRecording(false);
+    };
+    recognition.onend = () => setIsRecording(false);
+    recognition.start();
+  };
+
+  const toggleSpeech = (text, id) => {
+    if (!window.speechSynthesis) return;
+    if (speakingId === id) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.onend = () => setSpeakingId(null);
+    setSpeakingId(id);
+    window.speechSynthesis.speak(utterance);
+  };
+
   const handleSend = async (e, customPrompt = null) => {
     if (e) e.preventDefault();
     const promptToSend = customPrompt || input;
-    if (!promptToSend.trim() || loading) return;
+    if (!promptToSend.trim() && !selectedImage) return;
     
-    const userMessage = { id: Date.now(), type: 'user', text: promptToSend };
+    const userMessage = { id: Date.now(), type: 'user', text: promptToSend, image: imagePreview };
     setMessages(prev => [...prev, userMessage]);
+    
     if (!customPrompt) setInput('');
+    const currentImage = selectedImage;
+    clearImage(); // Clear UI immediately
     setLoading(true);
     
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyC5FS7DyBJtRH5K6qkulViI9GO3awzKGWg";
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
       if (!apiKey) throw new Error("API Key missing");
       const genAI = new GoogleGenerativeAI(apiKey);
       const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
@@ -41,9 +127,16 @@ const AIAssistant = () => {
       const condStr = weatherData?.condition ? weatherData.condition : "unknown";
       const systemContext = `You are KrishiMitra, an expert AI farming assistant. Be highly concise, actionable, and professional. The current weather is ${tempStr} and ${condStr}. Do not use bold formatting or markdown excessively, keep it readable as plain text.`;
       
-      const prompt = `${systemContext}\nUser asks: ${promptToSend}`;
+      const textPrompt = `${systemContext}\nUser asks: ${promptToSend}`;
       
-      const result = await model.generateContent(prompt);
+      let result;
+      if (currentImage) {
+        const imagePart = await fileToGenerativePart(currentImage);
+        result = await model.generateContent([textPrompt, imagePart]);
+      } else {
+        result = await model.generateContent(textPrompt);
+      }
+
       const response = await result.response;
       const text = response.text();
 
@@ -197,9 +290,28 @@ const AIAssistant = () => {
                 <div className={`max-w-[85%] md:max-w-[75%] p-4 rounded-2xl text-[14px] leading-relaxed font-light shadow-lg ${
                   msg.type === 'user' 
                     ? 'bg-[rgba(25,40,25,0.8)] border border-[rgba(140,180,120,0.2)] text-white rounded-tr-sm' 
-                    : 'bg-[rgba(15,20,15,0.7)] border border-[rgba(180,210,140,0.15)] text-[rgba(230,240,210,0.95)] rounded-tl-sm backdrop-blur-md'
+                    : 'bg-[rgba(15,20,15,0.7)] border border-[rgba(180,210,140,0.15)] text-[rgba(230,240,210,0.95)] rounded-tl-sm backdrop-blur-md relative group'
                 }`}>
+                  
+                  {/* Image render inside bubble */}
+                  {msg.image && (
+                    <div className="mb-3">
+                      <img src={msg.image} alt="User Upload" className="max-w-[200px] rounded-lg border border-[rgba(255,255,255,0.1)]" />
+                    </div>
+                  )}
+                  
                   {msg.text}
+                  
+                  {/* AI Message Audio Button */}
+                  {msg.type === 'ai' && (
+                    <button 
+                      onClick={() => toggleSpeech(msg.text, msg.id)}
+                      className="absolute -right-10 bottom-0 p-2 text-body hover:text-accent opacity-0 group-hover:opacity-100 transition-opacity bg-[rgba(15,20,15,0.8)] rounded-full border border-[rgba(140,180,120,0.2)]"
+                      title={speakingId === msg.id ? "Stop Speech" : "Read Aloud"}
+                    >
+                      {speakingId === msg.id ? <Square size={14} className="fill-current" /> : <Volume2 size={14} />}
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -216,26 +328,81 @@ const AIAssistant = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-5 bg-[rgba(8,12,8,0.6)] border-t border-[rgba(140,180,120,0.1)]">
-            <form onSubmit={(e) => handleSend(e)} className="relative flex items-center gap-3">
-              <button type="button" className="p-3 text-body hover:text-accent transition-colors bg-[rgba(15,20,15,0.8)] border border-[rgba(140,180,120,0.2)] rounded-xl shrink-0">
+          <div className="p-5 bg-[rgba(8,12,8,0.6)] border-t border-[rgba(140,180,120,0.1)] relative">
+            
+            {/* Image Preview Overlay */}
+            {imagePreview && (
+              <div className="absolute -top-24 left-5 p-2 bg-[rgba(15,20,15,0.9)] border border-[rgba(140,180,120,0.3)] rounded-xl backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+                <div className="relative">
+                  <img src={imagePreview} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
+                  <button 
+                    type="button" 
+                    onClick={clearImage}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-0.5 hover:bg-red-600 transition-colors"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={(e) => handleSend(e)} className="relative flex items-center gap-2 md:gap-3">
+              
+              {/* Image Upload Button */}
+              <input 
+                type="file" 
+                accept="image/*" 
+                ref={fileInputRef} 
+                onChange={handleImageSelect} 
+                className="hidden" 
+              />
+              <button 
+                type="button" 
+                onClick={() => fileInputRef.current?.click()}
+                className="p-3 text-body hover:text-accent transition-colors bg-[rgba(15,20,15,0.8)] border border-[rgba(140,180,120,0.2)] rounded-xl shrink-0"
+                title="Attach Image"
+              >
+                <ImagePlus size={20} />
+              </button>
+
+              {/* Voice Record Button */}
+              <button 
+                type="button" 
+                onClick={startRecording}
+                className={`p-3 transition-colors border rounded-xl shrink-0 ${
+                  isRecording 
+                    ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse' 
+                    : 'text-body hover:text-accent bg-[rgba(15,20,15,0.8)] border-[rgba(140,180,120,0.2)]'
+                }`}
+                title="Voice Dictation"
+              >
                 <Mic size={20} />
               </button>
+
+              {/* Text Input */}
               <div className="relative flex-1">
                 <input 
                   type="text" 
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Command KrishiMitra intelligence..." 
-                  className="glass-input w-full p-4 pl-5 pr-14 text-[14px] font-light placeholder:text-[rgba(180,210,150,0.4)] bg-[rgba(10,15,10,0.8)] border-[rgba(140,180,120,0.25)] rounded-xl focus:border-accent/50 focus:shadow-[0_0_20px_rgba(180,210,140,0.08)]"
+                  placeholder={isRecording ? "Listening..." : "Command KrishiMitra intelligence..."}
+                  className={`glass-input w-full p-4 pl-5 pr-14 text-[14px] font-light placeholder:text-[rgba(180,210,150,0.4)] bg-[rgba(10,15,10,0.8)] rounded-xl transition-all ${
+                    isRecording 
+                      ? 'border-red-500/30 text-red-100 shadow-[0_0_15px_rgba(239,68,68,0.1)]' 
+                      : 'border-[rgba(140,180,120,0.25)] focus:border-accent/50 focus:shadow-[0_0_20px_rgba(180,210,140,0.08)]'
+                  }`}
                   disabled={loading}
                 />
                 <button 
                   type="submit" 
-                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${input.trim() && !loading ? 'bg-accent text-black shadow-[0_0_15px_rgba(230,245,120,0.3)] hover:bg-[#dff060]' : 'text-[rgba(140,180,120,0.4)] bg-transparent'}`}
-                  disabled={!input.trim() || loading}
+                  className={`absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg transition-colors ${
+                    (input.trim() || selectedImage) && !loading 
+                      ? 'bg-accent text-black shadow-[0_0_15px_rgba(230,245,120,0.3)] hover:bg-[#dff060]' 
+                      : 'text-[rgba(140,180,120,0.4)] bg-transparent'
+                  }`}
+                  disabled={(!input.trim() && !selectedImage) || loading}
                 >
-                  <Send size={18} className={input.trim() ? 'ml-0.5' : ''} />
+                  <Send size={18} className={(input.trim() || selectedImage) ? 'ml-0.5' : ''} />
                 </button>
               </div>
             </form>
