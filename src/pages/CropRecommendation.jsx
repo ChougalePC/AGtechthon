@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
-import { Sprout, MapPin, Droplets, Sun, ChevronRight, Activity, TrendingUp, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Sprout, MapPin, Droplets, Sun, ChevronRight, Activity, TrendingUp, CheckCircle2, RotateCcw } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { saveCropRecommendation, getLatestCropRecommendations } from '../utils/db';
 
 const CropRecommendation = () => {
+  const { userProfile } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -12,6 +15,24 @@ const CropRecommendation = () => {
     season: ''
   });
 
+  // Pre-fill from profile and check history
+  useEffect(() => {
+    if (userProfile) {
+      setFormData(prev => ({
+        ...prev,
+        location: userProfile.location || '',
+        soilType: userProfile.soilType || ''
+      }));
+      
+      // Load latest
+      getLatestCropRecommendations(userProfile.uid).then(hist => {
+        if (hist && hist.crops) {
+          setResult(hist.crops);
+        }
+      });
+    }
+  }, [userProfile]);
+
   const handleSelect = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -21,34 +42,75 @@ const CropRecommendation = () => {
     else analyze();
   };
 
-  const analyze = () => {
+  const analyze = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      setResult({
-        primary: {
-          name: "Soybean",
-          profitability: 88,
-          risk: "Low",
-          yield: "22-25 Quintals/Hectare",
-          time: "90-110 Days"
+    setResult(null);
+    try {
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+      if (!apiKey) throw new Error("API Key missing");
+
+      const prompt = `You are an expert agronomist in India. A farmer needs crop recommendations based on the following:
+- Location: ${formData.location}
+- Soil Type: ${formData.soilType}
+- Water Availability: ${formData.water}
+- Season: ${formData.season}
+- Farm Size: ${userProfile?.farmSize || 'Unknown'} acres
+
+Respond strictly with a raw JSON object matching this schema, without any markdown formatting or code blocks:
+{
+  "primary": {
+    "name": "Crop Name",
+    "profitability": <number 0-100>,
+    "risk": "Low, Medium, or High",
+    "yield": "Estimated yield per acre",
+    "time": "Harvest time in days"
+  },
+  "secondary": [
+    { "name": "Alternative Crop 1", "profit": <number 0-100>, "risk": "Low/Medium/High" },
+    { "name": "Alternative Crop 2", "profit": <number 0-100>, "risk": "Low/Medium/High" }
+  ]
+}`;
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "KrishiMitra AI"
         },
-        secondary: [
-          { name: "Cotton", profit: 82, risk: "Medium" },
-          { name: "Pigeon Pea (Tur)", profit: 75, risk: "Low" }
-        ]
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          max_tokens: 1000,
+          messages: [{ role: "user", content: prompt }]
+        })
       });
-    }, 2000);
+
+      if (!response.ok) throw new Error("API failed");
+      const data = await response.json();
+      const cleanJson = data.choices[0].message.content.replace(/```json\n?|\n?```/g, '').trim();
+      const parsed = JSON.parse(cleanJson);
+      
+      setResult(parsed);
+      
+      if (userProfile?.uid) {
+        await saveCropRecommendation(userProfile.uid, parsed);
+      }
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      alert("Failed to generate recommendations. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetForm = () => {
     setStep(1);
     setResult(null);
-    setFormData({ soilType: '', location: '', water: '', season: '' });
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full max-w-4xl mx-auto flex flex-col">
+    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full max-w-4xl mx-auto flex flex-col pb-12">
       <div className="mt-8 mb-8 text-center">
         <span className="text-[10px] font-medium tracking-[4px] uppercase text-[rgba(210,230,160,0.65)] block mb-2">Smart Farming</span>
         <h1 className="font-serif text-3xl md:text-5xl text-heading">
@@ -93,7 +155,7 @@ const CropRecommendation = () => {
                   <h2 className="text-2xl font-serif text-heading">Select Soil Type</h2>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  {['Black Soil', 'Red Soil', 'Alluvial Soil', 'Sandy Soil'].map((type) => (
+                  {['Black Soil', 'Red Soil', 'Alluvial Soil', 'Sandy Soil', 'Laterite Soil'].map((type) => (
                     <div 
                       key={type}
                       onClick={() => handleSelect('soilType', type)}
@@ -198,6 +260,11 @@ const CropRecommendation = () => {
 
       {result && !loading && (
         <div className="animate-in fade-in slide-in-from-bottom-8 duration-500">
+          <div className="flex justify-end mb-4">
+             <button onClick={resetForm} className="flex items-center gap-2 px-4 py-2 text-[10px] uppercase tracking-wider text-accent border border-[rgba(140,180,120,0.3)] rounded-full hover:bg-[rgba(140,180,120,0.1)] transition-colors">
+               <RotateCcw size={12} /> Start New Analysis
+             </button>
+          </div>
           <div className="glass-card p-8 border border-accent/30 shadow-[0_0_50px_rgba(230,245,120,0.1)] relative overflow-hidden mb-6">
             <div className="absolute top-0 right-0 w-64 h-64 bg-accent opacity-10 rounded-full blur-3xl pointer-events-none"></div>
             
@@ -257,11 +324,6 @@ const CropRecommendation = () => {
             ))}
           </div>
 
-          <div className="flex justify-center">
-            <button onClick={resetForm} className="px-6 py-3 text-[11px] font-medium tracking-[1.5px] uppercase text-body hover:text-white border border-[rgba(140,180,120,0.2)] rounded-full hover:bg-[rgba(20,30,20,0.5)] transition-all">
-              Run New Analysis
-            </button>
-          </div>
         </div>
       )}
     </div>

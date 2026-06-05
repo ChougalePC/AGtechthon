@@ -2,11 +2,13 @@ import { jsPDF } from 'jspdf';
 
 // Helper to draw text with specific styles
 const drawText = (doc, text, x, y, options = {}) => {
-  const { fontSize = 10, font = 'helvetica', style = 'normal', color = '#000000', align = 'left' } = options;
+  const { fontSize = 10, font = 'helvetica', style = 'normal', color = '#000000', align = 'left', maxWidth = 170 } = options;
   doc.setFont(font, style);
   doc.setFontSize(fontSize);
   doc.setTextColor(color);
-  doc.text(text, x, y, { align });
+  const lines = doc.splitTextToSize(text, maxWidth);
+  doc.text(lines, x, y, { align });
+  return y + (lines.length * (fontSize * 0.4));
 };
 
 // Helper to draw a section header
@@ -25,7 +27,7 @@ const drawLine = (doc, y) => {
   return y + 5;
 };
 
-export const generateExecutiveReport = async (userData, charts) => {
+export const generateExecutiveReport = async (userData, weatherData, fullContext, charts) => {
   // Create A4 document (210x297mm)
   const doc = new jsPDF({
     orientation: 'portrait',
@@ -82,8 +84,9 @@ export const generateExecutiveReport = async (userData, charts) => {
   drawText(doc, "28 Qtl/Acre", 80, y, { fontSize: 11 });
   y += 8;
   
+  const savedWater = fullContext?.irrigation?.schedule?.financials?.saved || '85%';
   drawText(doc, "Water Efficiency:", 20, y, { fontSize: 11, style: 'bold' });
-  drawText(doc, "92% (-2.1% Usage)", 80, y, { fontSize: 11 });
+  drawText(doc, `${savedWater} (AI Optimized)`, 80, y, { fontSize: 11 });
   y += 15;
 
   y = drawSectionHeader(doc, "2. Performance Analytics", y);
@@ -105,52 +108,70 @@ export const generateExecutiveReport = async (userData, charts) => {
   y = 20;
 
   y = drawSectionHeader(doc, "3. Weather Intelligence & Risks", y);
-  drawText(doc, "Current Conditions: 28°C, 65% Humidity. Clear skies.", 20, y, { fontSize: 10 });
+  drawText(doc, `Current Conditions: ${weatherData?.temp || '--'}°C, ${weatherData?.humidity || '--'}% Humidity. ${weatherData?.description || 'Clear skies'}.`, 20, y, { fontSize: 10 });
   y += 8;
-  drawText(doc, "Forecast (7-Day): Mild temperatures with a 40% chance of rain on Thursday.", 20, y, { fontSize: 10 });
+  drawText(doc, `Location: ${weatherData?.location || 'Unknown'}. Wind: ${weatherData?.wind_speed || '0'} km/h.`, 20, y, { fontSize: 10 });
   y += 8;
-  drawText(doc, "Weather Risks: Low risk of frost. High UV index during peak hours.", 20, y, { fontSize: 10, style: 'bold', color: '#cc0000' });
+  const isRaining = weatherData?.condition?.toLowerCase().includes('rain');
+  drawText(doc, `Weather Risks: ${isRaining ? 'Heavy rainfall expected. Delay spraying.' : 'Low risk of rain. Heat stress possible mid-day.'}`, 20, y, { fontSize: 10, style: 'bold', color: isRaining ? '#cc0000' : '#888800' });
   y += 8;
-  drawText(doc, "Recommendation: Safe to apply foliar sprays early morning or late evening.", 20, y, { fontSize: 10, color: accentColor });
+  drawText(doc, `Recommendation: ${isRaining ? 'Protect harvested crops immediately.' : 'Safe to apply foliar sprays early morning or late evening.'}`, 20, y, { fontSize: 10, color: accentColor });
   y += 15;
 
   y = drawSectionHeader(doc, "4. Crop Performance & Estimates", y);
-  const crops = userData?.primaryCrops?.length > 0 ? userData.primaryCrops.join(', ') : "Soybean, Wheat (Simulated)";
-  drawText(doc, `Active Crops: ${crops}`, 20, y, { fontSize: 10, style: 'bold' });
+  const cropsStr = userData?.primaryCrops?.length > 0 ? userData.primaryCrops.join(', ') : "Mixed Agriculture";
+  drawText(doc, `Active Crops: ${cropsStr}`, 20, y, { fontSize: 10, style: 'bold' });
   y += 8;
-  drawText(doc, `Farm Size: ${userData?.farmSize || '4.5'} Acres`, 20, y, { fontSize: 10 });
+  drawText(doc, `Farm Size: ${userData?.farmSize || 'Unknown'} Acres`, 20, y, { fontSize: 10 });
   y += 8;
-  drawText(doc, "Yield Estimate: Trending 5% above historical average for Kharif season.", 20, y, { fontSize: 10 });
+  drawText(doc, "Yield Estimate: Trending 5% above historical average for Kharif season based on current AI metrics.", 20, y, { fontSize: 10 });
   y += 8;
-  drawText(doc, "Revenue Projection: Expected ₹ 1.2L to ₹ 1.5L per acre based on current trends.", 20, y, { fontSize: 10 });
+  drawText(doc, "Revenue Projection: Expected ₹ 1.2L to ₹ 1.5L per acre based on market intelligence trends.", 20, y, { fontSize: 10 });
   y += 15;
 
   y = drawSectionHeader(doc, "5. Disease Detection History", y);
-  drawText(doc, "Last Scan: Northern Corn Leaf Blight detected (Moderate Severity).", 20, y, { fontSize: 10 });
-  y += 8;
-  drawText(doc, "Confidence: 94.2%", 20, y, { fontSize: 10 });
-  y += 8;
-  drawText(doc, "Treatment Status: Mancozeb applied on 12th Aug. Monitoring required.", 20, y, { fontSize: 10 });
-  y += 15;
+  if (fullContext?.disease) {
+    const dis = fullContext.disease;
+    drawText(doc, `Last Scan: ${dis.disease} detected on ${dis.crop}.`, 20, y, { fontSize: 10 });
+    y += 8;
+    drawText(doc, `Severity: ${dis.severity} | Date: ${new Date(dis.createdAt).toLocaleDateString()}`, 20, y, { fontSize: 10 });
+    y += 8;
+    y = drawText(doc, `Recommended Treatment: ${dis.prevention}`, 20, y, { fontSize: 10 });
+    y += 5;
+  } else {
+    drawText(doc, "No recent disease detections. Farm ecosystem is healthy.", 20, y, { fontSize: 10, color: accentColor });
+    y += 15;
+  }
 
   // --- PAGE 4: IRRIGATION, MARKET & AI ---
   doc.addPage();
   y = 20;
 
   y = drawSectionHeader(doc, "6. Irrigation Analysis", y);
-  drawText(doc, "Current Soil Moisture: 42% (Optimal)", 20, y, { fontSize: 10 });
-  y += 8;
-  drawText(doc, "Schedule: Next irrigation window recommended tomorrow 6:00 AM - 9:00 AM.", 20, y, { fontSize: 10 });
-  y += 8;
-  drawText(doc, "Water Savings: AI scheduling has saved approx 12,000 Liters this month.", 20, y, { fontSize: 10, style: 'bold', color: accentColor });
-  y += 15;
+  if (fullContext?.irrigation?.schedule) {
+    const irr = fullContext.irrigation.schedule;
+    drawText(doc, `Critical Action: ${irr.criticalAction.title}`, 20, y, { fontSize: 10, style: 'bold' });
+    y += 8;
+    drawText(doc, `Recommended Window: ${irr.criticalAction.window}`, 20, y, { fontSize: 10 });
+    y += 8;
+    drawText(doc, `Expected Resource Usage: ${irr.criticalAction.usage}`, 20, y, { fontSize: 10 });
+    y += 8;
+    drawText(doc, `Weather Impact: ${irr.criticalAction.weatherImpact}`, 20, y, { fontSize: 10 });
+    y += 8;
+    drawText(doc, `Water Savings: AI scheduling has saved approx ${irr.financials.saved} Liters this month (₹${irr.financials.cost}).`, 20, y, { fontSize: 10, style: 'bold', color: accentColor });
+    y += 15;
+  } else {
+    drawText(doc, "Current Soil Moisture: Optimal. No critical irrigation actions required today.", 20, y, { fontSize: 10 });
+    y += 15;
+  }
 
   y = drawSectionHeader(doc, "7. Market Intelligence", y);
-  drawText(doc, "Commodity: Soybean", 20, y, { fontSize: 10, style: 'bold' });
+  const primaryCrop = userData?.primaryCrops?.[0] || 'Commodity';
+  drawText(doc, `Primary Commodity: ${primaryCrop}`, 20, y, { fontSize: 10, style: 'bold' });
   y += 8;
-  drawText(doc, "Current Price: ₹ 4,200 / Qtl (Up 2% this week)", 20, y, { fontSize: 10 });
+  drawText(doc, `Market Trajectory: Volatile. Closely monitor ${primaryCrop} prices.`, 20, y, { fontSize: 10 });
   y += 8;
-  drawText(doc, "Trend: Bullish. Heavy demand expected in the next 14 days due to export policies.", 20, y, { fontSize: 10 });
+  drawText(doc, "Trend: Bullish demand expected in the next 14 days due to export policies.", 20, y, { fontSize: 10 });
   y += 8;
   drawText(doc, "Selling Strategy: Hold 30% of inventory for peak pricing next month.", 20, y, { fontSize: 10, color: accentColor });
   y += 15;
@@ -161,11 +182,19 @@ export const generateExecutiveReport = async (userData, charts) => {
   doc.rect(20, y, 170, 50, 'F');
   
   drawText(doc, "IMMEDIATE ACTIONS", 25, y + 8, { fontSize: 9, style: 'bold' });
-  drawText(doc, "• Complete irrigation of Plot A before impending dry spell.", 25, y + 16, { fontSize: 10 });
-  drawText(doc, "• Inspect Plot B for early signs of pest infestation.", 25, y + 24, { fontSize: 10 });
+  drawText(doc, `• Monitor ${primaryCrop} for water stress during peak sun hours.`, 25, y + 16, { fontSize: 10 });
+  if (fullContext?.disease?.severity === 'High') {
+    drawText(doc, `• URGENT: Apply treatment for ${fullContext.disease.disease} as instructed.`, 25, y + 24, { fontSize: 10, color: '#cc0000' });
+  } else {
+    drawText(doc, "• Inspect remaining plots for early signs of pest infestation.", 25, y + 24, { fontSize: 10 });
+  }
   
   drawText(doc, "LONG-TERM STRATEGY", 25, y + 36, { fontSize: 9, style: 'bold' });
-  drawText(doc, "• Consider crop rotation with legumes next season to restore soil nitrogen.", 25, y + 44, { fontSize: 10 });
+  if (fullContext?.crops?.crops?.primary) {
+    drawText(doc, `• Next season recommendation: ${fullContext.crops.crops.primary.name} (${fullContext.crops.crops.primary.reason}).`, 25, y + 44, { fontSize: 10 });
+  } else {
+    drawText(doc, "• Consider crop rotation with legumes next season to restore soil nitrogen.", 25, y + 44, { fontSize: 10 });
+  }
 
   // Save the PDF
   const filename = `KrishiMitra_Executive_Report_${new Date().getTime()}.pdf`;

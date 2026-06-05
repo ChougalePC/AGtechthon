@@ -1,11 +1,25 @@
-import React, { useState } from 'react';
-import { Upload, ImageIcon, X, AlertCircle, CheckCircle2, Leaf, ShieldAlert, Sparkles } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Upload, ImageIcon, X, AlertCircle, CheckCircle2, Leaf, ShieldAlert, Sparkles, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { saveDiseaseReport, getDiseaseHistory } from '../utils/db';
 
 const DiseaseDetection = () => {
+  const { userProfile } = useAuth();
   const [dragActive, setDragActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState(null);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (userProfile?.uid) {
+        const hist = await getDiseaseHistory(userProfile.uid);
+        setHistory(hist);
+      }
+    };
+    fetchHistory();
+  }, [userProfile]);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -34,9 +48,7 @@ const DiseaseDetection = () => {
   };
 
   const handleFile = (file) => {
-    // Check if it's an image
     if (!file.type.match('image.*')) return;
-    
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target.result);
@@ -61,7 +73,7 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
   "crop": "Name of the crop",
   "confidence": <number between 0 and 100 representing your confidence>,
   "severity": "Low, Moderate, High, or None",
-  "treatment": ["Actionable step 1", "Actionable step 2", ...],
+  "treatment": ["Actionable step 1", "Actionable step 2"],
   "prevention": "One sentence on how to prevent this in the future."
 }`;
 
@@ -88,18 +100,25 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `HTTP error ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`HTTP error ${response.status}`);
       const data = await response.json();
       const responseText = data.choices[0].message.content;
       
       const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
       const parsedResult = JSON.parse(cleanJson);
       
-      setResult(parsedResult);
+      // Add image to result to save to history
+      const reportToSave = { ...parsedResult, image: base64Image };
+      setResult(reportToSave);
+      
+      // Save to Firebase
+      if (userProfile?.uid) {
+        await saveDiseaseReport(userProfile.uid, reportToSave);
+        // Refresh history
+        const hist = await getDiseaseHistory(userProfile.uid);
+        setHistory(hist);
+      }
+
     } catch (error) {
       console.error("Analysis Error:", error);
       alert(`Failed to analyze image: ${error.message || "Unknown error"}. Please try again.`);
@@ -115,7 +134,7 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full max-w-5xl mx-auto flex flex-col">
+    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full max-w-5xl mx-auto flex flex-col pb-12">
       
       <div className="mt-8 mb-8 text-center">
         <span className="text-[10px] font-medium tracking-[4px] uppercase text-[rgba(210,230,160,0.65)] block mb-2">Plant Health Scanner</span>
@@ -128,7 +147,6 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-        {/* Upload Area */}
         <div className="flex flex-col h-full">
           {!selectedImage ? (
             <div 
@@ -143,9 +161,8 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
               </div>
               <h3 className="text-lg font-serif text-heading mb-2">Drag & Drop Image</h3>
               <p className="text-xs text-body font-light mb-8 max-w-xs leading-relaxed">
-                Supported formats: JPEG, PNG, WEBP. For best results, ensure the leaf is well-lit and in focus.
+                Supported formats: JPEG, PNG, WEBP.
               </p>
-              
               <label className="glass-button px-8 py-3 cursor-pointer">
                 <span className="text-[11px] font-medium tracking-[1.5px] uppercase">Browse Files</span>
                 <input type="file" className="hidden" accept="image/*" onChange={handleChange} />
@@ -183,7 +200,7 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
                     </div>
                     <div>
                       <h3 className="font-serif text-2xl text-heading text-[rgba(255,230,220,1)] drop-shadow-[0_0_10px_rgba(220,80,60,0.4)]">{result.disease}</h3>
-                      <p className="text-xs font-light tracking-wide text-[rgba(255,160,140,0.8)] uppercase mt-1">High Risk Detected</p>
+                      <p className="text-xs font-light tracking-wide text-[rgba(255,160,140,0.8)] uppercase mt-1">{result.severity} Severity</p>
                     </div>
                   </div>
                 ) : null}
@@ -192,7 +209,6 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
           )}
         </div>
 
-        {/* Results Panel */}
         <div className="flex flex-col h-full">
           {!result && !analyzing ? (
             <div className="flex-1 glass-card p-8 flex flex-col items-center justify-center text-center border border-[rgba(140,180,120,0.1)] bg-[rgba(10,15,10,0.3)]">
@@ -201,7 +217,7 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
               <p className="text-xs font-light text-[rgba(215,230,190,0.3)] mt-2">Analysis results will appear here</p>
             </div>
           ) : analyzing ? (
-            <div className="flex-1 glass-card p-8 flex flex-col">
+             <div className="flex-1 glass-card p-8 flex flex-col">
               <div className="space-y-6 animate-pulse opacity-60">
                 <div>
                   <div className="h-4 bg-[rgba(140,180,120,0.2)] rounded w-1/4 mb-2"></div>
@@ -264,17 +280,48 @@ Respond ONLY with a raw JSON object matching exactly this schema, without any ma
                 <h4 className="text-[10px] font-medium tracking-[2px] uppercase text-[rgba(210,230,160,0.5)] mb-2">Preventative Measure</h4>
                 <p className="text-xs font-light leading-relaxed text-body">{result.prevention}</p>
               </div>
-
-              <div className="mt-6 flex gap-4">
-                <button className="glass-button flex-1 py-3 bg-[rgba(180,60,40,0.2)] border-[rgba(220,80,60,0.3)] hover:bg-[rgba(180,60,40,0.3)] hover:border-[rgba(220,80,60,0.5)] group">
-                  <span className="text-[11px] font-medium tracking-[1.5px] uppercase text-[rgba(255,180,160,1)] group-hover:text-white transition-colors">Find Local Fungicide</span>
-                </button>
-              </div>
-
             </div>
           )}
         </div>
       </div>
+
+      {/* History Section */}
+      {history.length > 0 && (
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 mt-4">
+          <div className="flex items-center gap-3 mb-6">
+            <Clock className="text-accent" size={20} />
+            <h2 className="font-serif text-2xl text-heading">Scan History</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {history.map((item) => (
+              <div key={item.id} className="glass-card overflow-hidden flex flex-col group border-[rgba(140,180,120,0.15)] hover:border-accent transition-colors">
+                <div className="h-40 relative overflow-hidden">
+                  <img src={item.image} alt={item.crop} className="w-full h-full object-cover opacity-70 group-hover:opacity-100 transition-opacity duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[rgba(10,15,10,0.9)] to-transparent"></div>
+                  <div className="absolute bottom-3 left-4">
+                    <h4 className="font-serif text-lg text-heading drop-shadow-md">{item.disease}</h4>
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-[rgba(255,160,140,0.9)] mt-1">{item.severity} Risk</p>
+                  </div>
+                </div>
+                <div className="p-5 flex-1 flex flex-col">
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-xs font-light text-label flex items-center gap-1"><Leaf size={12}/> {item.crop}</span>
+                    <span className="text-[10px] font-medium text-accent tracking-wider">{new Date(item.createdAt).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-xs text-body font-light line-clamp-3 leading-relaxed opacity-80">
+                    {item.treatment[0]}
+                  </p>
+                  <button className="text-[10px] uppercase tracking-widest text-accent font-medium mt-auto pt-4 hover:text-white transition-colors self-start">
+                    View Details →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

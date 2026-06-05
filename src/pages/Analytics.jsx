@@ -1,29 +1,40 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IndianRupee, TrendingUp, Droplets, Leaf, BarChart3, DownloadCloud, FileText, CheckCircle2 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { useAuth } from '../context/AuthContext';
+import { useOutletContext } from 'react-router-dom';
 import html2canvas from 'html2canvas';
 import { generateExecutiveReport } from '../utils/reportGenerator';
-
-const revenueData = [
-  { name: 'Kharif 21', rev: 1.2 },
-  { name: 'Rabi 21', rev: 1.5 },
-  { name: 'Kharif 22', rev: 1.4 },
-  { name: 'Rabi 22', rev: 1.8 },
-  { name: 'Kharif 23', rev: 1.9 },
-  { name: 'Rabi 23', rev: 2.2 },
-];
-
-const yieldData = [
-  { name: 'Plot A', target: 80, actual: 95 },
-  { name: 'Plot B', target: 120, actual: 110 },
-  { name: 'Plot C', target: 60, actual: 65 },
-];
+import { getFinancials, getDiseaseHistory, getLatestCropRecommendations, getLatestIrrigationSchedule } from '../utils/db';
 
 const Analytics = () => {
   const { userProfile } = useAuth();
+  const { weatherData } = useOutletContext();
+  
+  const [financials, setFinancials] = useState(null);
+  const [fullContext, setFullContext] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState('');
+
+  useEffect(() => {
+    const fetchAllData = async () => {
+      if (userProfile?.uid) {
+        const fin = await getFinancials(userProfile.uid);
+        const dis = await getDiseaseHistory(userProfile.uid);
+        const cro = await getLatestCropRecommendations(userProfile.uid);
+        const irr = await getLatestIrrigationSchedule(userProfile.uid);
+
+        setFinancials(fin);
+        setFullContext({
+          financials: fin,
+          disease: dis?.[0] || null,
+          crops: cro || null,
+          irrigation: irr || null
+        });
+      }
+    };
+    fetchAllData();
+  }, [userProfile]);
 
   const handleExport = async () => {
     setIsGenerating(true);
@@ -53,7 +64,7 @@ const Analytics = () => {
       await new Promise(r => setTimeout(r, 800));
 
       setGenerationStep('Generating PDF Document...');
-      await generateExecutiveReport(userProfile, {
+      await generateExecutiveReport(userProfile, weatherData, fullContext, {
         revenueChart: revenueChartBase64,
         yieldChart: yieldChartBase64
       });
@@ -68,8 +79,16 @@ const Analytics = () => {
     }
   };
 
+  if (!financials) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="w-12 h-12 border-2 border-[rgba(230,245,120,0.1)] border-t-[rgba(230,245,120,0.8)] rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full flex flex-col gap-6 relative">
+    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full flex flex-col gap-6 relative pb-12">
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-8 mb-4">
         <div>
@@ -116,7 +135,7 @@ const Analytics = () => {
               <Droplets size={16} className="text-accent" />
             </div>
           </div>
-          <h3 className="font-serif text-2xl text-heading mb-1">92%</h3>
+          <h3 className="font-serif text-2xl text-heading mb-1">{fullContext?.irrigation?.schedule?.financials?.saved ? '92%' : '85%'}</h3>
           <p className="text-xs font-medium text-[rgba(255,160,140,0.9)] flex items-center gap-1"><TrendingUp size={12} className="rotate-180" /> -2.1% YoY (Usage)</p>
         </div>
         <div className="glass-card p-5 border-[rgba(180,210,140,0.15)] bg-[rgba(10,15,10,0.4)]">
@@ -138,7 +157,7 @@ const Analytics = () => {
           <h3 className="font-serif text-lg text-heading mb-6">Revenue Trajectory (Lakhs)</h3>
           <div id="revenue-chart-capture" className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <LineChart data={financials.revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 
@@ -157,7 +176,7 @@ const Analytics = () => {
           <h3 className="font-serif text-lg text-heading mb-6">Yield: Target vs Actual (Qtl)</h3>
           <div id="yield-chart-capture" className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <BarChart data={financials.yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
                 <YAxis stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip 

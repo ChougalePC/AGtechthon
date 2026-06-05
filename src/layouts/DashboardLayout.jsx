@@ -2,32 +2,43 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import WeatherBackground from '../components/WeatherBackground';
+import { useAuth } from '../context/AuthContext';
+import { getCoordinates, getWeatherData } from '../utils/weatherApi';
 
 const DashboardLayout = () => {
-  const location = useLocation();
+  const { userProfile } = useAuth();
   const [weatherData, setWeatherData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchWeather = async (lat = 18.5204, lon = 73.8567) => {
+  const fetchWeather = async (lat, lon, locName) => {
     try {
-      const apiKey = "bd5e378503939ddaee76f12ad7a97608";
-      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`);
-      if (!response.ok) throw new Error('Failed to fetch weather data');
-      const data = await response.json();
+      // Using Open-Meteo API from our utility
+      const data = await getWeatherData(lat, lon);
+      if (!data) throw new Error('Failed to fetch weather data');
       
+      const current = data.current;
+      const wCode = current.weather_code;
+      
+      // Map WMO codes to OpenWeather strings for background component compatibility
+      let cond = 'Clear';
+      if (wCode >= 50 && wCode <= 69) cond = 'Rain';
+      else if (wCode >= 70 && wCode <= 79) cond = 'Snow';
+      else if (wCode >= 80 && wCode <= 99) cond = 'Rain';
+      else if (wCode >= 1 && wCode <= 3) cond = 'Clouds';
+
       setWeatherData({
         lat: lat,
         lon: lon,
-        temp: Math.round(data.main.temp),
-        condition: data.weather[0].main,
-        description: data.weather[0].description,
-        location: `${data.name}, ${data.sys.country}`,
-        humidity: data.main.humidity,
-        wind_speed: Math.round(data.wind.speed * 3.6),
-        rain_1h: data.rain ? data.rain['1h'] : 0,
-        temp_max: Math.round(data.main.temp_max),
-        temp_min: Math.round(data.main.temp_min)
+        temp: Math.round(current.temperature_2m),
+        condition: cond,
+        description: cond === 'Clear' ? 'Clear Sky' : cond === 'Rain' ? 'Rainy' : 'Cloudy',
+        location: locName || "Your Farm",
+        humidity: current.relative_humidity_2m,
+        wind_speed: current.wind_speed_10m,
+        rain_1h: current.precipitation || 0,
+        temp_max: Math.round(data.daily?.temperature_2m_max?.[0] || current.temperature_2m + 3),
+        temp_min: Math.round(data.daily?.temperature_2m_min?.[0] || current.temperature_2m - 3)
       });
       setLoading(false);
     } catch (err) {
@@ -36,26 +47,36 @@ const DashboardLayout = () => {
     }
   };
 
-  const getUserLocation = () => {
+  const getUserLocation = async () => {
     setLoading(true);
+    
+    // Prioritize User Profile Location
+    if (userProfile && userProfile.location) {
+      const coords = await getCoordinates(userProfile.location);
+      if (coords) {
+        return fetchWeather(coords.lat, coords.lon, coords.name);
+      }
+    }
+
+    // Fallback to Geolocation
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          fetchWeather(position.coords.latitude, position.coords.longitude);
+          fetchWeather(position.coords.latitude, position.coords.longitude, "Current Location");
         },
         (error) => {
           console.error("Error getting location, falling back to default:", error);
-          fetchWeather(); // Fallback to Pune
+          fetchWeather(18.5204, 73.8567, "Pune, India"); // Fallback to Pune
         }
       );
     } else {
-      fetchWeather();
+      fetchWeather(18.5204, 73.8567, "Pune, India");
     }
   };
 
   useEffect(() => {
     getUserLocation();
-  }, []);
+  }, [userProfile?.location]); // Refetch if profile location changes
 
   return (
     <div className="relative min-h-screen bg-black overflow-hidden">
