@@ -40,31 +40,73 @@ const DiseaseDetection = () => {
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target.result);
-      analyzeImage();
+      analyzeImage(e.target.result);
     };
     reader.readAsDataURL(file);
   };
 
-  const analyzeImage = () => {
+  const analyzeImage = async (base64Image) => {
     setAnalyzing(true);
     setResult(null);
     
-    // Simulate AI analysis
-    setTimeout(() => {
-      setAnalyzing(false);
-      setResult({
-        disease: "Northern Corn Leaf Blight",
-        crop: "Maize (Corn)",
-        confidence: 94.2,
-        severity: "Moderate",
-        treatment: [
-          "Apply fungicides containing Mancozeb or Propiconazole immediately.",
-          "Ensure fields have good drainage to reduce humidity.",
-          "For next season, practice crop rotation and plow under infected residue."
-        ],
-        prevention: "Plant resistant hybrids and avoid continuous planting of corn in the same field."
+    try {
+      const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
+      if (!apiKey) throw new Error("OpenRouter API Key missing");
+
+      const prompt = `You are KrishiMitra, an expert plant pathologist. Analyze this image of a plant/leaf. 
+Identify the crop and any visible diseases. 
+Respond ONLY with a raw JSON object matching exactly this schema, without any markdown formatting or code blocks:
+{
+  "disease": "Name of the disease (or 'Healthy' if none)",
+  "crop": "Name of the crop",
+  "confidence": <number between 0 and 100 representing your confidence>,
+  "severity": "Low, Moderate, High, or None",
+  "treatment": ["Actionable step 1", "Actionable step 2", ...],
+  "prevention": "One sentence on how to prevent this in the future."
+}`;
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": window.location.origin,
+          "X-Title": "KrishiMitra AI"
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          max_tokens: 1000,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: base64Image } }
+              ]
+            }
+          ]
+        })
       });
-    }, 2500);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || `HTTP error ${response.status}`);
+      }
+
+      const data = await response.json();
+      const responseText = data.choices[0].message.content;
+      
+      const cleanJson = responseText.replace(/```json\n?|\n?```/g, '').trim();
+      const parsedResult = JSON.parse(cleanJson);
+      
+      setResult(parsedResult);
+    } catch (error) {
+      console.error("Analysis Error:", error);
+      alert(`Failed to analyze image: ${error.message || "Unknown error"}. Please try again.`);
+      resetAnalysis();
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   const resetAnalysis = () => {

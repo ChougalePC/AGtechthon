@@ -1,6 +1,9 @@
-import React from 'react';
-import { IndianRupee, TrendingUp, Droplets, Leaf, BarChart3, DownloadCloud } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import React, { useState } from 'react';
+import { IndianRupee, TrendingUp, Droplets, Leaf, BarChart3, DownloadCloud, FileText, CheckCircle2 } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
+import { useAuth } from '../context/AuthContext';
+import html2canvas from 'html2canvas';
+import { generateExecutiveReport } from '../utils/reportGenerator';
 
 const revenueData = [
   { name: 'Kharif 21', rev: 1.2 },
@@ -18,8 +21,55 @@ const yieldData = [
 ];
 
 const Analytics = () => {
+  const { userProfile } = useAuth();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState('');
+
+  const handleExport = async () => {
+    setIsGenerating(true);
+    
+    try {
+      setGenerationStep('Compiling User Context...');
+      await new Promise(r => setTimeout(r, 600)); // Simulate async compilation
+      
+      setGenerationStep('Rendering Analytics Charts...');
+      // Capture charts
+      const revenueNode = document.getElementById('revenue-chart-capture');
+      const yieldNode = document.getElementById('yield-chart-capture');
+      
+      let revenueChartBase64 = null;
+      let yieldChartBase64 = null;
+
+      if (revenueNode) {
+        const canvas = await html2canvas(revenueNode, { backgroundColor: '#0a0f0a', scale: 2 });
+        revenueChartBase64 = canvas.toDataURL('image/png');
+      }
+      if (yieldNode) {
+        const canvas = await html2canvas(yieldNode, { backgroundColor: '#0a0f0a', scale: 2 });
+        yieldChartBase64 = canvas.toDataURL('image/png');
+      }
+
+      setGenerationStep('Synthesizing AI Insights...');
+      await new Promise(r => setTimeout(r, 800));
+
+      setGenerationStep('Generating PDF Document...');
+      await generateExecutiveReport(userProfile, {
+        revenueChart: revenueChartBase64,
+        yieldChart: yieldChartBase64
+      });
+
+      setGenerationStep('Done!');
+      setTimeout(() => setIsGenerating(false), 1000);
+
+    } catch (error) {
+      console.error("PDF Generation failed", error);
+      alert("Failed to generate PDF. Please try again.");
+      setIsGenerating(false);
+    }
+  };
+
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full flex flex-col gap-6">
+    <div className="animate-in fade-in slide-in-from-bottom-8 duration-700 h-full flex flex-col gap-6 relative">
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mt-8 mb-4">
         <div>
@@ -28,7 +78,10 @@ const Analytics = () => {
             Performance <em className="italic text-accent drop-shadow-[0_0_30px_rgba(230,245,120,0.2)]">Analytics</em>
           </h1>
         </div>
-        <button className="glass-button px-6 py-2 flex items-center gap-2">
+        <button 
+          onClick={handleExport}
+          className="glass-button px-6 py-2 flex items-center gap-2 hover:bg-[rgba(230,245,120,0.15)] transition-all"
+        >
           <DownloadCloud size={14} />
           <span className="text-[10px] font-medium tracking-[1.5px] uppercase">Export Report</span>
         </button>
@@ -83,7 +136,7 @@ const Analytics = () => {
         {/* Revenue Chart */}
         <div className="glass-card p-6 flex flex-col min-h-[350px]">
           <h3 className="font-serif text-lg text-heading mb-6">Revenue Trajectory (Lakhs)</h3>
-          <div className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
+          <div id="revenue-chart-capture" className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={revenueData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
@@ -102,7 +155,7 @@ const Analytics = () => {
         {/* Yield Analytics */}
         <div className="glass-card p-6 flex flex-col min-h-[350px]">
           <h3 className="font-serif text-lg text-heading mb-6">Yield: Target vs Actual (Qtl)</h3>
-          <div className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
+          <div id="yield-chart-capture" className="flex-1 w-full bg-[rgba(10,15,10,0.3)] border border-[rgba(140,180,120,0.1)] rounded-xl p-4">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={yieldData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <XAxis dataKey="name" stroke="rgba(140,180,120,0.3)" fontSize={10} tickLine={false} axisLine={false} />
@@ -121,6 +174,33 @@ const Analytics = () => {
           </div>
         </div>
       </div>
+
+      {/* PDF Generation Modal Overlay */}
+      {isGenerating && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center animate-in fade-in duration-300">
+          <div className="glass-card p-8 flex flex-col items-center min-w-[300px] border border-[rgba(180,210,140,0.3)] shadow-[0_0_50px_rgba(230,245,120,0.1)]">
+            {generationStep === 'Done!' ? (
+              <div className="w-16 h-16 rounded-full bg-[rgba(180,210,140,0.1)] border border-accent flex items-center justify-center mb-6 text-accent animate-in zoom-in">
+                <CheckCircle2 size={32} />
+              </div>
+            ) : (
+              <div className="relative w-16 h-16 mb-6">
+                <div className="absolute inset-0 border-2 border-[rgba(140,180,120,0.2)] rounded-full"></div>
+                <div className="absolute inset-0 border-2 border-accent rounded-full border-t-transparent animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center text-accent">
+                  <FileText size={20} className="animate-pulse" />
+                </div>
+              </div>
+            )}
+            <h2 className="font-serif text-2xl text-heading mb-2">
+              {generationStep === 'Done!' ? 'Report Ready' : 'Generating Report'}
+            </h2>
+            <p className="text-xs font-light text-accent tracking-widest uppercase animate-pulse">
+              {generationStep}
+            </p>
+          </div>
+        </div>
+      )}
 
     </div>
   );
