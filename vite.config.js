@@ -5,7 +5,21 @@ import { resolve } from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    {
+      name: 'rewrite-app',
+      configureServer(server) {
+        server.middlewares.use((req, res, next) => {
+          if (req.url.startsWith('/app/') && !req.url.includes('.')) {
+            req.url = '/app/index.html';
+          }
+          next();
+        });
+      }
+    }
+  ],
   build: {
     rollupOptions: {
       input: {

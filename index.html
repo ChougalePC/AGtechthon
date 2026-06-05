@@ -4,7 +4,7 @@
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-	<title>Verdana — Digital Oasis</title>
+	<title>KrishiMitra AI — Agritech Platform</title>
 	<style>
 		@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
 
@@ -875,18 +875,102 @@
 			}
 		}
 	</script>
+
+  <style>
+    .app-dropdown-wrapper {
+      position: relative;
+      display: inline-block;
+      pointer-events: auto;
+    }
+    .app-menu-btn {
+      background: none;
+      border: 1px solid rgba(180, 210, 140, 0.25);
+      border-radius: 6px;
+      padding: 6px;
+      cursor: pointer;
+      color: rgba(215, 230, 190, 0.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .app-menu-btn:hover {
+      background: rgba(40, 65, 40, 0.5);
+      color: var(--accent);
+    }
+    .app-dropdown-content {
+      position: absolute;
+      top: 40px;
+      right: 0;
+      background: rgba(10, 18, 10, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(140, 180, 120, 0.15);
+      border-radius: 8px;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all 0.3s ease;
+      z-index: 1000;
+      padding: 8px 0;
+    }
+    .app-dropdown-wrapper.open .app-dropdown-content {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .app-dropdown-content a {
+      color: rgba(215, 230, 190, 0.7) !important;
+      padding: 10px 20px !important;
+      margin: 0 !important;
+      text-transform: none !important;
+      font-size: 13px !important;
+      letter-spacing: 1px !important;
+      display: block;
+      border-bottom: 1px solid rgba(140, 180, 120, 0.05);
+    }
+    .app-dropdown-content a:last-child {
+      border-bottom: none;
+    }
+    .app-dropdown-content a:hover {
+      background: rgba(40, 65, 40, 0.4);
+      color: var(--accent) !important;
+    }
+  </style>
 </head>
+
 
 <body>
 	<div class="progress-bar" id="progressBar"></div>
 
 	<nav class="nav-float" id="navFloat">
-		<div class="nav-logo">Verdana</div>
+		<div class="nav-logo">KrishiMitra</div>
 		<div class="nav-links">
 			<a href="javascript:void(0)" data-nav="1">Mission</a>
 			<a href="javascript:void(0)" data-nav="2">Pillars</a>
 			<a href="javascript:void(0)" data-nav="3">Impact</a>
 			<a href="login.html">Log In</a>
+
+      <div class="app-dropdown-wrapper" id="appDropdownWrapperDesktop" style="margin-left: 20px; vertical-align: middle;">
+        <button class="app-menu-btn" id="appMenuBtnDesktop">
+          <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+        </button>
+        <div class="app-dropdown-content">
+          <a href="/app/dashboard">Dashboard</a>
+          <a href="/app/assistant">AI Assistant</a>
+          <a href="/app/disease">Disease Detection</a>
+          <a href="/app/crop">Crop Recommendation</a>
+          <a href="/app/weather">Weather Intelligence</a>
+          <a href="/app/irrigation">Irrigation Advisor</a>
+          <a href="/app/market">Market Intelligence</a>
+          <a href="/app/schemes">Government Schemes</a>
+          <a href="/app/profile">Farmer Profile</a>
+          <a href="/app/alerts">Alerts Center</a>
+          <a href="/app/analytics">Analytics</a>
+        </div>
+      </div>
 		</div>
 		<button class="nav-hamburger" id="navHamburger" aria-label="Menu">
 			<span></span><span></span><span></span>
@@ -898,6 +982,26 @@
 		<a href="javascript:void(0)" data-nav-mobile="2">Pillars</a>
 		<a href="javascript:void(0)" data-nav-mobile="3">Impact</a>
 		<a href="login.html">Log In</a>
+
+      <div class="app-dropdown-wrapper" id="appDropdownWrapperMobile" style="margin-top: 20px;">
+        <button class="app-menu-btn" id="appMenuBtnMobile" style="margin: 0 auto;">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+          <span style="margin-left: 10px; font-size: 14px; letter-spacing: 2px;">APPS</span>
+        </button>
+        <div class="app-dropdown-content" style="position: relative; top: 10px; right: auto; transform: none;">
+          <a href="/app/dashboard">Dashboard</a>
+          <a href="/app/assistant">AI Assistant</a>
+          <a href="/app/disease">Disease Detection</a>
+          <a href="/app/crop">Crop Recommendation</a>
+          <a href="/app/weather">Weather Intelligence</a>
+          <a href="/app/irrigation">Irrigation Advisor</a>
+          <a href="/app/market">Market Intelligence</a>
+          <a href="/app/schemes">Government Schemes</a>
+          <a href="/app/profile">Farmer Profile</a>
+          <a href="/app/alerts">Alerts Center</a>
+          <a href="/app/analytics">Analytics</a>
+        </div>
+      </div>
 	</div>
 
 	<button class="settings-gear" id="settingsGear" aria-label="Settings">
@@ -908,8 +1012,8 @@
 	<div id="scroll-container">
 		<section class="section hero" id="heroSection" data-stage="0">
 			<span class="hero-tag" data-reveal data-delay="1">Rooted in Tomorrow</span>
-			<h1 data-reveal data-delay="2">The<br><em>Digital</em> Oasis</h1>
-			<p class="hero-sub" data-reveal data-delay="3">Where technology meets the earth. A sanctuary for sustainable minds building a regenerative future.</p>
+			<h1 data-reveal data-delay="2">KrishiMitra<br><em>AI</em> Platform</h1>
+			<p class="hero-sub" data-reveal data-delay="3">Where agriculture meets advanced intelligence. A comprehensive platform for data-driven, sustainable farming.</p>
 
 			<div class="scroll-hint" data-reveal data-delay="4">
 				<span>Explore</span>
@@ -919,7 +1023,7 @@
 
 		<section class="section manifesto" data-stage="1">
 			<span class="manifesto-label" data-reveal>Our Philosophy</span>
-			<h2 data-reveal data-delay="1">We believe the next era of technology won't be built in sterile offices — it will be <em>grown</em>, like a forest, from living systems that breathe and adapt.</h2>
+			<h2 data-reveal data-delay="1">We believe the future of farming lies in the synergy between traditional wisdom and artificial intelligence. Empowering farmers with actionable insights.</h2>
 		</section>
 
 		<section class="section pillars" data-stage="2">
@@ -929,18 +1033,18 @@
 			<div class="pillar-grid">
 				<div class="pillar-card" data-reveal data-delay="1">
 					<div class="pillar-num">01</div>
-					<h3>Regenerate</h3>
-					<p>Every product we design gives back more than it takes. Carbon-negative infrastructure, powered by wind and light.</p>
+					<h3>Analyze</h3>
+					<p>Real-time crop and soil health monitoring using computer vision and satellite imagery.</p>
 				</div>
 				<div class="pillar-card" data-reveal data-delay="2">
 					<div class="pillar-num">02</div>
-					<h3>Reconnect</h3>
-					<p>Bridging the gap between screen time and green time. Digital tools that encourage you to step outside.</p>
+					<h3>Predict</h3>
+					<p>Advanced weather forecasting and yield prediction models to help you stay ahead of the curve.</p>
 				</div>
 				<div class="pillar-card" data-reveal data-delay="3">
 					<div class="pillar-num">03</div>
-					<h3>Rewild</h3>
-					<p>Open-source algorithms modeled on ecosystems. Software that evolves, adapts, and finds its own balance.</p>
+					<h3>Optimize</h3>
+					<p>Smart irrigation and precision agriculture to maximize resource efficiency and reduce costs.</p>
 				</div>
 			</div>
 		</section>
@@ -973,8 +1077,8 @@
 		</section>
 
 		<section class="section cta-section" data-stage="5">
-			<h2 data-reveal>Step into<br>the <em>Oasis</em></h2>
-			<p class="cta-sub" data-reveal data-delay="1">Join a growing collective of builders, dreamers, and stewards crafting a world worth inheriting.</p>
+			<h2 data-reveal>Empower Your<br><em>Harvest</em></h2>
+			<p class="cta-sub" data-reveal data-delay="1">Join a growing collective of farmers, agronomists, and technologists crafting a food-secure future.</p>
 			<a href="login.html" class="cta-btn" data-reveal data-delay="2">Log In →</a>
 		</section>
 
@@ -986,7 +1090,7 @@
 		<div class="site-footer-inner">
 			<div class="sf-brand">
 				<div class="sf-brand-name">Verdana</div>
-				<p class="sf-brand-desc">A sanctuary for sustainable minds building a regenerative future where technology meets the earth.</p>
+				<p class="sf-brand-desc">Where agriculture meets advanced intelligence. A comprehensive platform for data-driven, sustainable farming.</p>
 			</div>
 			<div class="sf-col">
 				<div class="sf-col-title">Explore</div>
@@ -1011,7 +1115,7 @@
 			</div>
 		</div>
 		<div class="sf-bottom">
-			<span class="sf-copy">© 2026 Verdana Digital Oasis. All futures reserved.</span>
+			<span class="sf-copy">© 2026 KrishiMitra AI. All rights reserved.</span>
 			<div class="sf-socials">
 				<a href="javascript:void(0)">Twitter</a>
 				<a href="javascript:void(0)">GitHub</a>
@@ -2290,7 +2394,37 @@
 			});
 		});
 
+		
+    // ─── App Dropdown Toggles ─────────────────────────────────────────
+    const appWrapperDesktop = document.getElementById('appDropdownWrapperDesktop');
+    const appBtnDesktop = document.getElementById('appMenuBtnDesktop');
+    if(appBtnDesktop) {
+      appBtnDesktop.addEventListener('click', (e) => {
+        e.stopPropagation();
+        appWrapperDesktop.classList.toggle('open');
+      });
+    }
+
+    const appWrapperMobile = document.getElementById('appDropdownWrapperMobile');
+    const appBtnMobile = document.getElementById('appMenuBtnMobile');
+    if(appBtnMobile) {
+      appBtnMobile.addEventListener('click', (e) => {
+        e.stopPropagation();
+        appWrapperMobile.classList.toggle('open');
+      });
+    }
+
+    document.addEventListener('click', (e) => {
+      if(appWrapperDesktop && !appWrapperDesktop.contains(e.target)) {
+        appWrapperDesktop.classList.remove('open');
+      }
+      if(appWrapperMobile && !appWrapperMobile.contains(e.target)) {
+        appWrapperMobile.classList.remove('open');
+      }
+    });
+
 		// ─── Mobile Hamburger Menu ─────────────────────────────────────────
+
 		const navHamburger = document.getElementById('navHamburger');
 		const navMobileOverlay = document.getElementById('navMobileOverlay');
 

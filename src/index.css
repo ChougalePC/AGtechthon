@@ -104,3 +104,44 @@ html, body {
   background: rgba(22, 38, 18, 0.6);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(180, 210, 140, 0.1) inset;
 }
+
+/* Weather Animations */
+@keyframes rainDrop {
+  0% { transform: translateY(-100px) rotate(15deg); opacity: 0; }
+  20% { opacity: 0.8; }
+  80% { opacity: 0.6; }
+  100% { transform: translateY(100vh) rotate(15deg); opacity: 0; }
+}
+
+.animate-rain {
+  animation: rainDrop linear infinite;
+}
+
+@keyframes lightningFlash {
+  0%, 95%, 98%, 100% { opacity: 0; }
+  96%, 99% { opacity: 0.8; }
+  97% { opacity: 0.3; }
+}
+
+.animate-lightning {
+  animation: lightningFlash 8s infinite;
+}
+
+@keyframes cloudMove {
+  0% { transform: translateX(-10%); opacity: 0.4; }
+  50% { opacity: 0.7; }
+  100% { transform: translateX(110%); opacity: 0.4; }
+}
+
+.animate-cloud {
+  animation: cloudMove linear infinite;
+}
+
+/* Hide scrollbar completely for cinematic timeline */
+.cinematic-scroll::-webkit-scrollbar {
+  display: none;
+}
+.cinematic-scroll {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
