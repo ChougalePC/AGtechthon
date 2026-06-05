@@ -145,3 +145,12 @@ html, body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@keyframes statusGlow {
+  0%, 100% { box-shadow: 0 0 8px currentColor; opacity: 0.8; }
+  50% { box-shadow: 0 0 16px currentColor, 0 0 4px currentColor inset; opacity: 1; }
+}
+
+.animate-status-glow {
+  animation: statusGlow 3s ease-in-out infinite;
+}

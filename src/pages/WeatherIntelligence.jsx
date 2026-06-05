@@ -1,84 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CloudRain, Sun, Wind, Droplets, Cloud, CloudLightning, MapPin, Search, X } from 'lucide-react';
-import * as maptilersdk from '@maptiler/sdk';
-import '@maptiler/sdk/dist/maptiler-sdk.css';
-
-const WeatherBackground = ({ condition }) => {
-  const isRain = condition.toLowerCase().includes('rain') || condition.toLowerCase().includes('drizzle');
-  const isStorm = condition.toLowerCase().includes('thunderstorm') || condition.toLowerCase().includes('storm');
-  const isClouds = condition.toLowerCase().includes('cloud');
-  const isClear = condition.toLowerCase().includes('clear') || condition.toLowerCase().includes('sun');
-
-  return (
-    <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-      {/* Base Gradient */}
-      <div className={`absolute inset-0 transition-colors duration-1000 ${
-        isClear ? 'bg-gradient-to-br from-[#0a150a] via-[#101a05] to-[#1a2510]' :
-        isRain ? 'bg-gradient-to-br from-[#050a10] via-[#0a1015] to-[#05080a]' :
-        isStorm ? 'bg-gradient-to-br from-[#020502] via-[#050805] to-[#000000]' :
-        'bg-gradient-to-br from-[#0a0f0a] via-[#0f150f] to-[#0a0a0a]'
-      }`} />
-
-      {/* Sunny Glow */}
-      {isClear && (
-        <>
-          <div className="absolute top-[-10%] right-[-10%] w-[50vw] h-[50vw] rounded-full bg-[rgba(230,245,120,0.15)] blur-[100px] mix-blend-screen" />
-          <div className="absolute bottom-[-20%] left-[-10%] w-[60vw] h-[60vw] rounded-full bg-[rgba(180,210,140,0.08)] blur-[120px] mix-blend-screen" />
-        </>
-      )}
-
-      {/* Clouds Fog */}
-      {isClouds && (
-        <>
-          <div className="absolute top-[20%] left-[-20%] w-[80vw] h-[40vh] rounded-full bg-[rgba(140,180,120,0.05)] blur-[80px] animate-cloud" style={{ animationDuration: '40s' }} />
-          <div className="absolute top-[40%] left-[-10%] w-[70vw] h-[50vh] rounded-full bg-[rgba(200,220,180,0.03)] blur-[100px] animate-cloud" style={{ animationDuration: '60s', animationDelay: '-20s' }} />
-        </>
-      )}
-
-      {/* Rain Particles */}
-      {(isRain || isStorm) && (
-        <div className="absolute inset-0">
-          {[...Array(30)].map((_, i) => (
-            <div 
-              key={i}
-              className="absolute top-[-10%] w-[1px] h-[15vh] bg-gradient-to-b from-transparent via-[rgba(180,210,140,0.3)] to-transparent animate-rain"
-              style={{
-                left: `${Math.random() * 100}%`,
-                animationDuration: `${0.5 + Math.random() * 0.5}s`,
-                animationDelay: `${Math.random() * 2}s`
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Lightning Flashes */}
-      {isStorm && (
-        <div className="absolute inset-0 bg-white mix-blend-overlay animate-lightning pointer-events-none" />
-      )}
-
-      {/* Subtle Noise Overlay for Texture */}
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }} />
-    </div>
-  );
-};
+import { useOutletContext } from 'react-router-dom';
+import maplibregl from 'maplibre-gl';
+import 'maplibre-gl/dist/maplibre-gl.css';
 
 const MapContainer = ({ lat, lon, onClose }) => {
   const mapContainer = React.useRef(null);
   const map = React.useRef(null);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (map.current) return;
     
-    maptilersdk.config.apiKey = 'pl7eAEPD0ivXU5JNn5l9';
-    map.current = new maptilersdk.Map({
+    map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: maptilersdk.MapStyle.BACKDROP_DARK,
+      style: {
+        version: 8,
+        sources: {
+          'osm-dark': {
+            type: 'raster',
+            tiles: [
+              'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png',
+              'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}@2x.png'
+            ],
+            tileSize: 256,
+            attribution: '&copy; CartoDB'
+          },
+          'owm-temp': {
+            type: 'raster',
+            tiles: [
+              `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=bd5e378503939ddaee76f12ad7a97608`
+            ],
+            tileSize: 256
+          }
+        },
+        layers: [
+          {
+            id: 'base-map',
+            type: 'raster',
+            source: 'osm-dark',
+            minzoom: 0,
+            maxzoom: 22
+          },
+          {
+            id: 'weather-temp',
+            type: 'raster',
+            source: 'owm-temp',
+            minzoom: 0,
+            maxzoom: 22,
+            paint: {
+              'raster-opacity': 0.85
+            }
+          }
+        ]
+      },
       center: [lon, lat],
-      zoom: 10
+      zoom: 4 // Zoomed out to see the weather fronts better
     });
 
-    new maptilersdk.Marker({ color: "#e6f578" })
+    new maplibregl.Marker({ color: "#e6f578" })
       .setLngLat([lon, lat])
       .addTo(map.current);
 
@@ -91,7 +71,7 @@ const MapContainer = ({ lat, lon, onClose }) => {
   }, [lat, lon]);
 
   return (
-    <div className="absolute inset-0 z-50 rounded-[40px] overflow-hidden animate-in zoom-in-95 duration-500">
+    <div className="absolute inset-0 z-50 rounded-[40px] overflow-hidden animate-in zoom-in-95 duration-500 bg-[#0a0a0a]">
       <div ref={mapContainer} className="w-full h-full" />
       <button 
         onClick={(e) => { e.stopPropagation(); onClose(); }}
@@ -104,56 +84,8 @@ const MapContainer = ({ lat, lon, onClose }) => {
 };
 
 const WeatherIntelligence = () => {
-  const [weatherData, setWeatherData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { weatherData, loading, error } = useOutletContext();
   const [showMap, setShowMap] = useState(false);
-
-  const fetchWeather = async (lat = 18.5204, lon = 73.8567) => {
-    try {
-      const apiKey = "bd5e378503939ddaee76f12ad7a97608";
-      const response = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${apiKey}`);
-      if (!response.ok) throw new Error('Failed to fetch weather data');
-      const data = await response.json();
-      
-      setWeatherData({
-        lat: lat,
-        lon: lon,
-        temp: Math.round(data.main.temp),
-        condition: data.weather[0].main,
-        description: data.weather[0].description,
-        location: `${data.name}, ${data.sys.country}`,
-        humidity: data.main.humidity,
-        wind_speed: Math.round(data.wind.speed * 3.6),
-        rain_1h: data.rain ? data.rain['1h'] : 0
-      });
-      setLoading(false);
-    } catch (err) {
-      setError(err.message);
-      setLoading(false);
-    }
-  };
-
-  const getUserLocation = () => {
-    setLoading(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          fetchWeather(position.coords.latitude, position.coords.longitude);
-        },
-        (error) => {
-          console.error("Error getting location, falling back to default:", error);
-          fetchWeather(); // Fallback to Pune
-        }
-      );
-    } else {
-      fetchWeather();
-    }
-  };
-
-  useEffect(() => {
-    getUserLocation();
-  }, []);
 
   const getImpactData = (condition, temp) => {
     const safeCondition = condition ? condition.toLowerCase() : '';
@@ -187,10 +119,8 @@ const WeatherIntelligence = () => {
   const impacts = getImpactData(weatherData.condition, weatherData.temp);
 
   return (
-    <div className="fixed inset-0 z-0 overflow-y-auto overflow-x-hidden bg-black text-white custom-scrollbar">
-      <WeatherBackground condition={weatherData.condition} />
-
-      <div className="relative z-10 w-full pt-24 pb-32">
+    <div className="w-full h-full text-white animate-in fade-in duration-700">
+      <div className="relative z-10 w-full pb-32">
         
         {/* SECTION 1 - IMMERSIVE HERO */}
         <section className="min-h-[85vh] flex flex-col justify-center px-6 md:px-16 lg:px-24">
