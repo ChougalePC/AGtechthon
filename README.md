@@ -19,6 +19,20 @@
 
 ---
 
+## 📸 Application Previews
+
+<div align="center">
+  <img src="./public/screenshots/dashboard.png" width="48%" alt="KrishiMitra Dashboard" />
+  <img src="./public/screenshots/assistant.png" width="48%" alt="AI Assistant" />
+</div>
+<br />
+<div align="center">
+  <img src="./public/screenshots/disease-detection.png" width="48%" alt="Disease Detection Scanner" />
+  <img src="./public/screenshots/marathi.png" width="48%" alt="Native Marathi Translation" />
+</div>
+
+---
+
 ## 🚨 The Problem Statement
 Agriculture forms the backbone of the Indian economy, employing over 50% of the nation's workforce and contributing massively to the GDP. Despite this, the agricultural sector remains highly vulnerable and technologically disconnected at the grassroots level. 
 
