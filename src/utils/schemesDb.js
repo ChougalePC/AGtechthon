@@ -1,5 +1,5 @@
 import { db } from '../config/firebase';
-import { collection, getDocs, setDoc, doc, writeBatch } from 'firebase/firestore';
+import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 
 export const getSchemes = async () => {
   const schemesCol = collection(db, 'schemes');

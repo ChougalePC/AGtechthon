@@ -88,3 +88,19 @@ export const getFinancials = async (uid) => {
   }
   return await initializeFinancialsIfEmpty(uid);
 };
+
+export const getAlerts = async (uid) => {
+  if (!uid) return [];
+  const q = query(collection(db, `users/${uid}/alerts`), orderBy('createdAt', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const saveAlert = async (uid, alertData) => {
+  if (!uid) return;
+  const colRef = collection(db, `users/${uid}/alerts`);
+  await addDoc(colRef, {
+    ...alertData,
+    createdAt: new Date().toISOString()
+  });
+};

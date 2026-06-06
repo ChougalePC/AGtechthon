@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Navigation from '../components/Navigation';
 import WeatherBackground from '../components/WeatherBackground';
+import LanguageSelector from '../components/LanguageSelector';
 import { useAuth } from '../context/AuthContext';
 import { getCoordinates, getWeatherData } from '../utils/weatherApi';
 
@@ -85,6 +86,9 @@ const DashboardLayout = () => {
 
       {/* Navigation (z-index 50) */}
       <Navigation />
+
+      {/* Floating Language Selector (z-index 100) */}
+      <LanguageSelector />
 
       {/* Main Content (z-index 10) */}
       <div className="relative z-10 w-full h-screen overflow-y-auto pt-24 pb-12 px-4 md:px-8">

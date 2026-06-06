@@ -37,7 +37,7 @@ export const generateExecutiveReport = async (userData, weatherData, fullContext
 
   const primaryColor = '#1e2d1e';
   const accentColor = '#6b8e23'; // Olive drab
-  let y = 0;
+  let y;
 
   // --- COVER PAGE ---
   doc.setFillColor(15, 25, 15);
@@ -100,7 +100,6 @@ export const generateExecutiveReport = async (userData, weatherData, fullContext
   if (charts.yieldChart) {
     if (y + 60 > 280) { doc.addPage(); y = 20; }
     doc.addImage(charts.yieldChart, 'PNG', 20, y, 170, 60);
-    y += 65;
   }
 
   // --- PAGE 3: WEATHER & CROP PERFORMANCE ---
@@ -136,11 +135,9 @@ export const generateExecutiveReport = async (userData, weatherData, fullContext
     y += 8;
     drawText(doc, `Severity: ${dis.severity} | Date: ${new Date(dis.createdAt).toLocaleDateString()}`, 20, y, { fontSize: 10 });
     y += 8;
-    y = drawText(doc, `Recommended Treatment: ${dis.prevention}`, 20, y, { fontSize: 10 });
-    y += 5;
+    drawText(doc, `Recommended Treatment: ${dis.prevention}`, 20, y, { fontSize: 10 });
   } else {
     drawText(doc, "No recent disease detections. Farm ecosystem is healthy.", 20, y, { fontSize: 10, color: accentColor });
-    y += 15;
   }
 
   // --- PAGE 4: IRRIGATION, MARKET & AI ---
