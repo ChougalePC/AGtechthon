@@ -83,6 +83,26 @@ To ensure true accessibility, we implemented a hybrid translation architecture:
 
 ---
 
+## 📂 Project Structure
+```text
+frontend/
+├── app/                  # Main React Entry point directory
+│   └── index.html        # App HTML template (with Google Translate injection)
+├── src/                  # React Application Source
+│   ├── components/       # Reusable UI components (Navigation, LanguageSelector, etc.)
+│   ├── context/          # Global React Context providers (e.g., AuthContext)
+│   ├── layouts/          # Shared page layouts (DashboardLayout wrapping all routes)
+│   ├── pages/            # Core feature pages (AIAssistant, DiseaseDetection, GovernmentSchemes...)
+│   ├── utils/            # Helper functions, AI logic, and mock databases
+│   ├── main.jsx          # React initialization and Router configuration
+│   └── index.css         # Tailwind configurations and global aesthetic styles
+├── index.html            # Public landing/marketing page (Three.js animated)
+├── vite.config.js        # Vite build & dynamic routing configuration
+└── package.json          # Project dependencies & scripts
+```
+
+---
+
 ## ⚙️ System Architecture & Tech Stack
 
 KrishiMitra AI is built on a modern, robust, and highly scalable stack:
